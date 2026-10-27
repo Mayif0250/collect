@@ -9,6 +9,7 @@
     "lint": "eslint",
     "db:local": "tsx scripts/local-pg-server.ts",
     "db:seed": "tsx prisma/seed.ts",
+    "db:clean": "tsx scripts/clean-test-data.ts",
     "setup:admin": "tsx scripts/setup-admin.ts",
     "postinstall": "prisma generate",
     "test": "tsx test/run-tests.ts"
