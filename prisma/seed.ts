@@ -129,19 +129,72 @@ export async function seedDatabase() {
   });
   console.log(`Admin user seeded: ${adminUser.username} (${adminUser.name})`);
 
-  // 3. Seed Default Collectors for operation
+  // 3. Seed Default Collectors for operation (18 total: 13 CSE and 5 ECE)
   const cseCollectorPasswordHash = await bcrypt.hash('cse123', 10);
-  const cseCollector = await prisma.user.upsert({
+  const eceCollectorPasswordHash = await bcrypt.hash('ece123', 10);
+
+  // 13 CSE Collectors (cse_collector1 to cse_collector13)
+  for (let i = 1; i <= 13; i++) {
+    const username = `cse_collector${i}`;
+    const name = `CSE Collector ${i}`;
+    await prisma.user.upsert({
+      where: { username },
+      update: {
+        name,
+        passwordHash: cseCollectorPasswordHash,
+        role: Role.CSE_COLLECTOR,
+        permittedDepartment: Department.CSE,
+        isActive: true,
+      },
+      create: {
+        name,
+        username,
+        passwordHash: cseCollectorPasswordHash,
+        role: Role.CSE_COLLECTOR,
+        permittedDepartment: Department.CSE,
+        isActive: true,
+      },
+    });
+  }
+  console.log('Seeded 13 CSE collectors (cse_collector1 through cse_collector13)');
+
+  // 5 ECE Collectors (ece_collector1 to ece_collector5)
+  for (let i = 1; i <= 5; i++) {
+    const username = `ece_collector${i}`;
+    const name = `ECE Collector ${i}`;
+    await prisma.user.upsert({
+      where: { username },
+      update: {
+        name,
+        passwordHash: eceCollectorPasswordHash,
+        role: Role.ECE_COLLECTOR,
+        permittedDepartment: Department.ECE,
+        isActive: true,
+      },
+      create: {
+        name,
+        username,
+        passwordHash: eceCollectorPasswordHash,
+        role: Role.ECE_COLLECTOR,
+        permittedDepartment: Department.ECE,
+        isActive: true,
+      },
+    });
+  }
+  console.log('Seeded 5 ECE collectors (ece_collector1 through ece_collector5)');
+
+  // Legacy / Fallback alias collectors
+  await prisma.user.upsert({
     where: { username: 'cse_collector' },
     update: {
-      name: 'CSE Collector',
+      name: 'CSE Collector (Primary)',
       passwordHash: cseCollectorPasswordHash,
       role: Role.CSE_COLLECTOR,
       permittedDepartment: Department.CSE,
       isActive: true,
     },
     create: {
-      name: 'CSE Collector',
+      name: 'CSE Collector (Primary)',
       username: 'cse_collector',
       passwordHash: cseCollectorPasswordHash,
       role: Role.CSE_COLLECTOR,
@@ -149,20 +202,18 @@ export async function seedDatabase() {
       isActive: true,
     },
   });
-  console.log(`CSE collector seeded: ${cseCollector.username}`);
 
-  const eceCollectorPasswordHash = await bcrypt.hash('ece123', 10);
-  const eceCollector = await prisma.user.upsert({
+  await prisma.user.upsert({
     where: { username: 'ece_collector' },
     update: {
-      name: 'ECE Collector',
+      name: 'ECE Collector (Primary)',
       passwordHash: eceCollectorPasswordHash,
       role: Role.ECE_COLLECTOR,
       permittedDepartment: Department.ECE,
       isActive: true,
     },
     create: {
-      name: 'ECE Collector',
+      name: 'ECE Collector (Primary)',
       username: 'ece_collector',
       passwordHash: eceCollectorPasswordHash,
       role: Role.ECE_COLLECTOR,
@@ -170,7 +221,7 @@ export async function seedDatabase() {
       isActive: true,
     },
   });
-  console.log(`ECE collector seeded: ${eceCollector.username}`);
+  console.log('Base collector aliases verified.');
 
   // 4. Default Session
   const existingSession = await prisma.collectionSession.findFirst();

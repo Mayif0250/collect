@@ -4,11 +4,36 @@ import React, { useState, useRef } from 'react';
 import { useRouter } from 'next/navigation';
 import { Lock, User, AlertCircle, ArrowRight, Eye, EyeOff } from 'lucide-react';
 
-const ROLES = [
-  { id: 'admin', label: 'System Administrator', description: 'Full System & Transfers', defaultUsername: 'admin' },
-  { id: 'cse_collector', label: 'CSE Collector', description: 'E Block Allocation', defaultUsername: 'cse_collector' },
-  { id: 'ece_collector', label: 'ECE Collector', description: 'F Block Allocation', defaultUsername: 'ece_collector' },
-  { id: 'custom', label: 'Manual Entry', description: 'Custom Username', defaultUsername: '' },
+interface RoleOption {
+  id: string;
+  label: string;
+  description: string;
+  defaultUsername: string;
+  category: 'admin' | 'cse' | 'ece' | 'custom';
+}
+
+const ROLES: RoleOption[] = [
+  { id: 'admin', label: 'System Administrator', description: 'Full System & Transfers', defaultUsername: 'admin', category: 'admin' },
+  
+  // 13 CSE Collectors for E Block
+  ...Array.from({ length: 13 }, (_, i) => ({
+    id: `cse_collector${i + 1}`,
+    label: `CSE Collector ${i + 1}`,
+    description: `E Block Station • cse_collector${i + 1}`,
+    defaultUsername: `cse_collector${i + 1}`,
+    category: 'cse' as const,
+  })),
+
+  // 5 ECE Collectors for F Block
+  ...Array.from({ length: 5 }, (_, i) => ({
+    id: `ece_collector${i + 1}`,
+    label: `ECE Collector ${i + 1}`,
+    description: `F Block Station • ece_collector${i + 1}`,
+    defaultUsername: `ece_collector${i + 1}`,
+    category: 'ece' as const,
+  })),
+
+  { id: 'custom', label: 'Manual Entry', description: 'Custom Username', defaultUsername: '', category: 'custom' },
 ];
 
 export default function LoginPage() {
@@ -117,11 +142,34 @@ export default function LoginPage() {
                   onChange={(e) => handleRoleSelect(e.target.value)}
                   className="w-full text-xs px-3 py-2.5 bg-[#F9FAFB] border border-[#E5E7EB] rounded-xl text-[#1A1A1A] font-medium focus:bg-white focus:ring-2 focus:ring-[#030213]/10 focus:border-[#030213] transition-all cursor-pointer shadow-2xs"
                 >
-                  {ROLES.map((role) => (
-                    <option key={role.id} value={role.id}>
-                      {role.label} ({role.description})
-                    </option>
-                  ))}
+                  <optgroup label="System Administration">
+                    {ROLES.filter((r) => r.category === 'admin').map((role) => (
+                      <option key={role.id} value={role.id}>
+                        {role.label} ({role.defaultUsername})
+                      </option>
+                    ))}
+                  </optgroup>
+                  <optgroup label="CSE Collectors (E Block — 13 Stations)">
+                    {ROLES.filter((r) => r.category === 'cse').map((role) => (
+                      <option key={role.id} value={role.id}>
+                        {role.label} ({role.defaultUsername})
+                      </option>
+                    ))}
+                  </optgroup>
+                  <optgroup label="ECE Collectors (F Block — 5 Stations)">
+                    {ROLES.filter((r) => r.category === 'ece').map((role) => (
+                      <option key={role.id} value={role.id}>
+                        {role.label} ({role.defaultUsername})
+                      </option>
+                    ))}
+                  </optgroup>
+                  <optgroup label="Other">
+                    {ROLES.filter((r) => r.category === 'custom').map((role) => (
+                      <option key={role.id} value={role.id}>
+                        {role.label} ({role.description})
+                      </option>
+                    ))}
+                  </optgroup>
                 </select>
               </div>
 
@@ -164,7 +212,9 @@ export default function LoginPage() {
                   >
                     Password
                   </label>
-                  <span className="text-[10px] text-[#9CA3AF]">Entered manually</span>
+                  <span className="text-[10px] text-[#9CA3AF]">
+                    {selectedRole.startsWith('cse') ? 'Default: cse123' : selectedRole.startsWith('ece') ? 'Default: ece123' : selectedRole === 'admin' ? 'Default: admin123' : 'Entered manually'}
+                  </span>
                 </div>
                 <div className="relative rounded-xl">
                   <div className="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none text-[#9CA3AF]">
@@ -201,6 +251,30 @@ export default function LoginPage() {
                   <span>{isLoading ? 'Authenticating...' : 'Sign In to Operations'}</span>
                   <ArrowRight className="w-4 h-4" />
                 </button>
+              </div>
+
+              {/* Concurrent Collectors Guide Hint */}
+              <div className="mt-4 pt-3 border-t border-[#E5E7EB] text-[11px] text-[#6B7280]">
+                <div className="font-semibold text-[#1A1A1A] mb-1 flex items-center justify-between">
+                  <span>Concurrent Collectors (18 Total)</span>
+                  <span className="text-[10px] bg-emerald-50 text-emerald-700 px-1.5 py-0.5 rounded font-medium border border-emerald-200">
+                    Active
+                  </span>
+                </div>
+                <div className="space-y-1">
+                  <div className="flex justify-between items-center bg-[#F9FAFB] px-2 py-1 rounded">
+                    <span>13 CSE Collectors (<code>cse_collector1..13</code>)</span>
+                    <span className="font-mono font-medium text-[#1A1A1A]">cse123</span>
+                  </div>
+                  <div className="flex justify-between items-center bg-[#F9FAFB] px-2 py-1 rounded">
+                    <span>5 ECE Collectors (<code>ece_collector1..5</code>)</span>
+                    <span className="font-mono font-medium text-[#1A1A1A]">ece123</span>
+                  </div>
+                  <div className="flex justify-between items-center bg-[#F9FAFB] px-2 py-1 rounded">
+                    <span>System Admin (<code>admin</code>)</span>
+                    <span className="font-mono font-medium text-[#1A1A1A]">admin123</span>
+                  </div>
+                </div>
               </div>
             </form>
           </div>

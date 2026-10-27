@@ -144,50 +144,47 @@ export async function cleanTestData() {
     console.log(`Verified active admin user: ${adminUser.username}`);
   }
 
-  // 11. Ensure default collectors exist and are active
-  const cseCollector = await prisma.user.findUnique({ where: { username: 'cse_collector' } });
-  if (!cseCollector) {
-    const cseCollectorPasswordHash = await bcrypt.hash('cse123', 10);
-    await prisma.user.create({
-      data: {
-        name: 'CSE Collector 1',
-        username: 'cse_collector',
-        passwordHash: cseCollectorPasswordHash,
-        role: Role.CSE_COLLECTOR,
-        permittedDepartment: Department.CSE,
-        isActive: true,
-      },
-    });
-    console.log('Created cse_collector user');
-  } else {
-    await prisma.user.update({
-      where: { id: cseCollector.id },
-      data: { isActive: true },
-    });
-    console.log('Verified active cse_collector user');
-  }
+  // 11. Ensure default collectors exist and are active (18 total: 13 CSE and 5 ECE)
+  const cseCollectorPasswordHash = await bcrypt.hash('cse123', 10);
+  const eceCollectorPasswordHash = await bcrypt.hash('ece123', 10);
 
-  const eceCollector = await prisma.user.findUnique({ where: { username: 'ece_collector' } });
-  if (!eceCollector) {
-    const eceCollectorPasswordHash = await bcrypt.hash('ece123', 10);
-    await prisma.user.create({
-      data: {
-        name: 'ECE Collector 1',
-        username: 'ece_collector',
-        passwordHash: eceCollectorPasswordHash,
-        role: Role.ECE_COLLECTOR,
-        permittedDepartment: Department.ECE,
-        isActive: true,
-      },
+  // 13 CSE Collectors
+  for (let i = 1; i <= 13; i++) {
+    const username = `cse_collector${i}`;
+    const name = `CSE Collector ${i}`;
+    await prisma.user.upsert({
+      where: { username },
+      update: { name, passwordHash: cseCollectorPasswordHash, role: Role.CSE_COLLECTOR, permittedDepartment: Department.CSE, isActive: true },
+      create: { name, username, passwordHash: cseCollectorPasswordHash, role: Role.CSE_COLLECTOR, permittedDepartment: Department.CSE, isActive: true },
     });
-    console.log('Created ece_collector user');
-  } else {
-    await prisma.user.update({
-      where: { id: eceCollector.id },
-      data: { isActive: true },
-    });
-    console.log('Verified active ece_collector user');
   }
+  console.log('Verified 13 active CSE collectors (cse_collector1 through cse_collector13)');
+
+  // 5 ECE Collectors
+  for (let i = 1; i <= 5; i++) {
+    const username = `ece_collector${i}`;
+    const name = `ECE Collector ${i}`;
+    await prisma.user.upsert({
+      where: { username },
+      update: { name, passwordHash: eceCollectorPasswordHash, role: Role.ECE_COLLECTOR, permittedDepartment: Department.ECE, isActive: true },
+      create: { name, username, passwordHash: eceCollectorPasswordHash, role: Role.ECE_COLLECTOR, permittedDepartment: Department.ECE, isActive: true },
+    });
+  }
+  console.log('Verified 5 active ECE collectors (ece_collector1 through ece_collector5)');
+
+  // Base alias accounts
+  await prisma.user.upsert({
+    where: { username: 'cse_collector' },
+    update: { name: 'CSE Collector (Primary)', passwordHash: cseCollectorPasswordHash, role: Role.CSE_COLLECTOR, permittedDepartment: Department.CSE, isActive: true },
+    create: { name: 'CSE Collector (Primary)', username: 'cse_collector', passwordHash: cseCollectorPasswordHash, role: Role.CSE_COLLECTOR, permittedDepartment: Department.CSE, isActive: true },
+  });
+
+  await prisma.user.upsert({
+    where: { username: 'ece_collector' },
+    update: { name: 'ECE Collector (Primary)', passwordHash: eceCollectorPasswordHash, role: Role.ECE_COLLECTOR, permittedDepartment: Department.ECE, isActive: true },
+    create: { name: 'ECE Collector (Primary)', username: 'ece_collector', passwordHash: eceCollectorPasswordHash, role: Role.ECE_COLLECTOR, permittedDepartment: Department.ECE, isActive: true },
+  });
+  console.log('Verified active base collector aliases');
 
   // 12. Ensure default session exists and is active
   const defaultSession = await prisma.collectionSession.findFirst({

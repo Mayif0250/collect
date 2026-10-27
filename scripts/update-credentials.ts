@@ -31,68 +31,70 @@ async function main() {
   });
   console.log(`Updated Admin user: ${adminUser.username} (password: admin123)`);
 
-  // 2. CSE Collector: cse_collector / cse123
+  // 2. 13 CSE Collectors: cse_collector1..13 / cse123
   const cseHash = await bcrypt.hash('cse123', 10);
-  const cseUser = await prisma.user.upsert({
-    where: { username: 'cse_collector' },
-    update: {
-      passwordHash: cseHash,
-      role: Role.CSE_COLLECTOR,
-      permittedDepartment: Department.CSE,
-      isActive: true,
-    },
-    create: {
-      name: 'CSE Collector',
-      username: 'cse_collector',
-      passwordHash: cseHash,
-      role: Role.CSE_COLLECTOR,
-      permittedDepartment: Department.CSE,
-      isActive: true,
-    },
-  });
-  console.log(`Updated CSE Collector: ${cseUser.username} (password: cse123)`);
+  for (let i = 1; i <= 13; i++) {
+    const username = `cse_collector${i}`;
+    await prisma.user.upsert({
+      where: { username },
+      update: {
+        name: `CSE Collector ${i}`,
+        passwordHash: cseHash,
+        role: Role.CSE_COLLECTOR,
+        permittedDepartment: Department.CSE,
+        isActive: true,
+      },
+      create: {
+        name: `CSE Collector ${i}`,
+        username,
+        passwordHash: cseHash,
+        role: Role.CSE_COLLECTOR,
+        permittedDepartment: Department.CSE,
+        isActive: true,
+      },
+    });
+  }
+  console.log('Updated 13 CSE Collectors: cse_collector1 through cse_collector13 (password: cse123)');
 
-  // 3. ECE Collector: ece_collector / ece123
+  // 3. 5 ECE Collectors: ece_collector1..5 / ece123
   const eceHash = await bcrypt.hash('ece123', 10);
-  const eceUser = await prisma.user.upsert({
-    where: { username: 'ece_collector' },
-    update: {
-      passwordHash: eceHash,
-      role: Role.ECE_COLLECTOR,
-      permittedDepartment: Department.ECE,
-      isActive: true,
-    },
-    create: {
-      name: 'ECE Collector',
-      username: 'ece_collector',
-      passwordHash: eceHash,
-      role: Role.ECE_COLLECTOR,
-      permittedDepartment: Department.ECE,
-      isActive: true,
-    },
+  for (let i = 1; i <= 5; i++) {
+    const username = `ece_collector${i}`;
+    await prisma.user.upsert({
+      where: { username },
+      update: {
+        name: `ECE Collector ${i}`,
+        passwordHash: eceHash,
+        role: Role.ECE_COLLECTOR,
+        permittedDepartment: Department.ECE,
+        isActive: true,
+      },
+      create: {
+        name: `ECE Collector ${i}`,
+        username,
+        passwordHash: eceHash,
+        role: Role.ECE_COLLECTOR,
+        permittedDepartment: Department.ECE,
+        isActive: true,
+      },
+    });
+  }
+  console.log('Updated 5 ECE Collectors: ece_collector1 through ece_collector5 (password: ece123)');
+
+  // Primary base aliases
+  await prisma.user.upsert({
+    where: { username: 'cse_collector' },
+    update: { passwordHash: cseHash, role: Role.CSE_COLLECTOR, permittedDepartment: Department.CSE, isActive: true },
+    create: { name: 'CSE Collector', username: 'cse_collector', passwordHash: cseHash, role: Role.CSE_COLLECTOR, permittedDepartment: Department.CSE, isActive: true },
   });
-  console.log(`Updated ECE Collector: ${eceUser.username} (password: ece123)`);
 
-  // If old accounts cse_collector_1 or ece_collector_1 exist, update their passwords too or sync them
-  const oldCse = await prisma.user.findUnique({ where: { username: 'cse_collector_1' } });
-  if (oldCse) {
-    await prisma.user.update({
-      where: { username: 'cse_collector_1' },
-      data: { passwordHash: cseHash },
-    });
-    console.log('Also updated cse_collector_1 password to cse123');
-  }
+  await prisma.user.upsert({
+    where: { username: 'ece_collector' },
+    update: { passwordHash: eceHash, role: Role.ECE_COLLECTOR, permittedDepartment: Department.ECE, isActive: true },
+    create: { name: 'ECE Collector', username: 'ece_collector', passwordHash: eceHash, role: Role.ECE_COLLECTOR, permittedDepartment: Department.ECE, isActive: true },
+  });
 
-  const oldEce = await prisma.user.findUnique({ where: { username: 'ece_collector_1' } });
-  if (oldEce) {
-    await prisma.user.update({
-      where: { username: 'ece_collector_1' },
-      data: { passwordHash: eceHash },
-    });
-    console.log('Also updated ece_collector_1 password to ece123');
-  }
-
-  console.log('Credential update completed successfully!');
+  console.log('Credential update completed successfully for all 18 collectors!');
 }
 
 main()
