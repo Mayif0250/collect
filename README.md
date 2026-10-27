@@ -93,15 +93,23 @@ Follow the interactive prompt to set a new password. Credentials are encrypted u
 
 ---
 
-## 4. Default Seed Accounts
+## 4. Default Seed Accounts (18 Concurrent Collectors + Administrator)
 
 After running `npm run db:seed`:
 
-| Role | Username | Password | Permitted Department / Block |
+| Role | Username(s) | Default Password | Permitted Department / Block |
 |---|---|---|---|
 | **Administrator** | `admin` | `admin123` | All Departments / All Blocks |
-| **CSE Collector** | `cse_collector` | `cse123` | CSE Department / E Block Only |
-| **ECE Collector** | `ece_collector` | `ece123` | ECE Department / F Block Only |
+| **CSE Collectors (13 Stations)** | `cse_collector1` through `cse_collector13` | `cse123` | CSE Department / E Block Only (13 Rooms) |
+| **ECE Collectors (5 Stations)** | `ece_collector1` through `ece_collector5` | `ece123` | ECE Department / F Block Only (5 Rooms) |
+| **Legacy Base Aliases** | `cse_collector`, `ece_collector` | `cse123` / `ece123` | Primary fallback accounts |
+
+### How Concurrent Collectors Operate:
+1. **Independent Sessions**: Each collector accesses the application (on their own laptop, mobile device, or proctor workstation) and signs in with their assigned username (`cse_collector1..13` or `ece_collector1..5`).
+2. **Stateless JWT Tokens**: Each operator receives their own cryptographically signed JWT cookie (`auth-token`), so up to 18 collectors operate concurrently without session clashes.
+3. **Atomic Room Claiming**: Upon clicking **"Claim Next Available Room"**, PostgreSQL atomic locks ensure each collector claims a unique room in sequential order with zero race conditions.
+4. **Parallel Laptop Registration**: All 18 stations record submissions simultaneously with guaranteed seat sequence ordering (1..capacity).
+
 
 ---
 
