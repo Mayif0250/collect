@@ -9,9 +9,7 @@ import {
   UserCheck,
   UserX,
   ShieldAlert,
-  Phone,
-  User,
-  Hash,
+  ChevronDown,
 } from 'lucide-react';
 import { StandardCard } from '@/components/ui/StandardCard';
 
@@ -36,7 +34,7 @@ export default function RapidCollectionForm({
   const [studentId, setStudentId] = useState('');
   const [studentName, setStudentName] = useState('');
   const [phoneNumber, setPhoneNumber] = useState('');
-  const [batch, setBatch] = useState<'O23' | 'O21'>('O23'); // Persisted across entries
+  const [batch, setBatch] = useState<'O23' | 'O22' | 'O21'>('O23'); // Persisted across entries (defaults to O23)
   const [isSubmitterPresent, setIsSubmitterPresent] = useState(true);
   const [submitterStudentId, setSubmitterStudentId] = useState('');
   const [directToBackup, setDirectToBackup] = useState(false);
@@ -368,34 +366,28 @@ export default function RapidCollectionForm({
               </div>
             </div>
 
-            {/* Preserved Batch Selector */}
+            {/* Preserved Batch Dropdown Selector */}
             <div className="md:col-span-4">
-              <label className="block text-xs font-semibold text-[#4B5563] uppercase tracking-wider mb-1.5">
+              <label
+                htmlFor="batchSelect"
+                className="block text-xs font-semibold text-[#4B5563] uppercase tracking-wider mb-1.5"
+              >
                 Batch <span className="text-red-500">*</span>
               </label>
-              <div className="grid grid-cols-2 gap-1 p-1 bg-[#F4F2F0] rounded-xl border border-[#E5E7EB]">
-                <button
-                  type="button"
-                  onClick={() => setBatch('O23')}
-                  className={`btn-interaction py-2 text-xs font-semibold rounded-lg transition-all cursor-pointer ${
-                    batch === 'O23'
-                      ? 'bg-[#030213] text-white shadow-2xs'
-                      : 'text-[#6B7280] hover:text-[#1A1A1A]'
-                  }`}
+              <div className="relative">
+                <select
+                  id="batchSelect"
+                  value={batch}
+                  onChange={(e) => setBatch(e.target.value as 'O23' | 'O22' | 'O21')}
+                  className="w-full text-base sm:text-lg font-mono font-bold px-3.5 py-2.5 rounded-xl border border-[#E5E7EB] bg-[#F9FAFB] text-[#1A1A1A] focus:bg-white focus:ring-2 focus:ring-[#030213]/10 focus:border-[#030213] transition-all cursor-pointer appearance-none shadow-2xs pr-10"
                 >
-                  O23
-                </button>
-                <button
-                  type="button"
-                  onClick={() => setBatch('O21')}
-                  className={`btn-interaction py-2 text-xs font-semibold rounded-lg transition-all cursor-pointer ${
-                    batch === 'O21'
-                      ? 'bg-[#030213] text-white shadow-2xs'
-                      : 'text-[#6B7280] hover:text-[#1A1A1A]'
-                  }`}
-                >
-                  O21
-                </button>
+                  <option value="O23">O23</option>
+                  <option value="O22">O22</option>
+                  <option value="O21">O21</option>
+                </select>
+                <div className="absolute inset-y-0 right-0 flex items-center pr-3.5 pointer-events-none text-[#6B7280]">
+                  <ChevronDown className="w-5 h-5" />
+                </div>
               </div>
             </div>
           </div>

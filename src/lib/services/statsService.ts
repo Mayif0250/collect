@@ -17,6 +17,7 @@ export interface DashboardMetrics {
   eceBackupCount: number;
   crossBlockCount: number;
   batchO23Count: number;
+  batchO22Count: number;
   batchO21Count: number;
   activeCollectorsCount: number;
   activeSession: {
@@ -59,6 +60,7 @@ export async function getDashboardMetrics(): Promise<DashboardMetrics> {
     eceBackupCount,
     crossBlockCount,
     batchO23Count,
+    batchO22Count,
     batchO21Count,
     duplicateWarningsCount,
     rooms,
@@ -74,6 +76,7 @@ export async function getDashboardMetrics(): Promise<DashboardMetrics> {
     prisma.laptopRecord.count({ where: { branch: Department.ECE, allocationStatus: AllocationStatus.BACKUP } }),
     prisma.laptopRecord.count({ where: { allocationStatus: AllocationStatus.CROSS_BLOCK } }),
     prisma.laptopRecord.count({ where: { batch: Batch.O23 } }),
+    prisma.laptopRecord.count({ where: { batch: Batch.O22 } }),
     prisma.laptopRecord.count({ where: { batch: Batch.O21 } }),
     prisma.laptopRecord.count({ where: { isDuplicateOverride: true } }),
     prisma.room.findMany({
@@ -156,6 +159,7 @@ export async function getDashboardMetrics(): Promise<DashboardMetrics> {
     eceBackupCount,
     crossBlockCount,
     batchO23Count,
+    batchO22Count,
     batchO21Count,
     activeCollectorsCount: activeClaims.length,
     activeSession: session

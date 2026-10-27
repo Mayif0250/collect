@@ -8,7 +8,7 @@ const registerSchema = z.object({
   studentId: z.string().trim().min(1, 'Student ID is required'),
   studentName: z.string().trim().min(1, 'Student Name is required'),
   phoneNumber: z.string().trim().min(10, 'Valid Phone Number is required (at least 10 digits)'),
-  batch: z.enum([Batch.O23, Batch.O21], { message: 'Batch must be O23 or O21' }),
+  batch: z.enum([Batch.O23, Batch.O22, Batch.O21], { message: 'Batch must be O23, O22, or O21' }),
   branch: z.enum([Department.CSE, Department.ECE]).optional(),
   isSubmitterPresent: z.boolean().default(true),
   submitterStudentId: z.string().trim().optional(),

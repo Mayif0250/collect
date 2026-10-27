@@ -230,8 +230,17 @@ export async function registerLaptop(input: RegisterLaptopInput): Promise<Regist
         );
       }
 
-      // Next sequential seat
-      assignedSeat = roomAllocations + 1;
+      // Next sequential seat (find first available seat index to avoid collision if entries were moved)
+      const existingRoomSeats = await tx.laptopRecord.findMany({
+        where: { roomId: activeClaim.roomId },
+        select: { seatNumber: true },
+      });
+      const occupiedSeatSet = new Set(existingRoomSeats.map((s) => s.seatNumber));
+      let nextSeat = 1;
+      while (occupiedSeatSet.has(nextSeat)) {
+        nextSeat++;
+      }
+      assignedSeat = nextSeat;
       targetRoomId = activeClaim.roomId;
       targetRoomName = activeClaim.room.name;
       collectionId = `COL-${branch}-${activeClaim.room.name}-${String(assignedSeat).padStart(2, '0')}-${generateRandomSuffix(3)}`;
