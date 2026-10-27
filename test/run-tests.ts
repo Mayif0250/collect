@@ -48,6 +48,17 @@ async function main() {
     await prisma.room.delete({ where: { id: tr.id } });
   }
 
+  // Release any active claims held by test collectors from previous runs
+  await prisma.roomClaim.updateMany({
+    where: {
+      collector: {
+        username: { in: ['test_cse_col_a', 'test_cse_col_b', 'test_ece_col'] },
+      },
+      status: ClaimStatus.ACTIVE,
+    },
+    data: { status: ClaimStatus.COMPLETED },
+  });
+
   // Ensure collection session is active
   await prisma.collectionSession.upsert({
     where: { id: 'test-session-id' },

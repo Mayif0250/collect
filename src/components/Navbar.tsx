@@ -41,8 +41,8 @@ export default function Navbar({ user, onRefresh, isRefreshing, activeSession }:
         <div className="flex justify-between items-center h-[74px]">
           {/* Left Brand & Title */}
           <div className="flex items-center space-x-3.5 min-w-0">
-            <div className="w-10 h-10 rounded-[12px] bg-[#030213] text-white flex items-center justify-center shadow-xs shrink-0">
-              <Laptop className="w-5 h-5 text-white" />
+            <div className="w-10 h-10 rounded-[12px] bg-white border border-[#E5E7EB] p-1 flex items-center justify-center shadow-2xs shrink-0 overflow-hidden">
+              <img src="/Rgukt_Logo.png" alt="RGUKT Logo" className="w-8 h-8 object-contain" />
             </div>
             <div className="min-w-0">
               <div className="flex items-center gap-2">

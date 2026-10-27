@@ -5,6 +5,7 @@ export interface RegisterLaptopInput {
   studentId: string;
   batch: Batch;
   studentName?: string;
+  phoneNumber?: string;
   isSubmitterPresent: boolean;
   submitterStudentId?: string;
   collectorId: string;
@@ -21,6 +22,7 @@ export interface RegisterLaptopResult {
     collectionId: string;
     studentId: string;
     studentName: string | null;
+    phoneNumber?: string | null;
     branch: Department;
     batch: Batch;
     createdAt: Date;
@@ -32,6 +34,7 @@ export interface RegisterLaptopResult {
     collectionId: string;
     studentId: string;
     studentName: string | null;
+    phoneNumber: string | null;
     branch: Department;
     batch: Batch;
     allocationStatus: AllocationStatus;
@@ -74,6 +77,7 @@ export async function registerLaptop(input: RegisterLaptopInput): Promise<Regist
   const normalizedStudentId = input.studentId.trim().toUpperCase();
   const normalizedSubmitterId = input.submitterStudentId?.trim().toUpperCase() || null;
   const normalizedStudentName = input.studentName?.trim() || null;
+  const normalizedPhoneNumber = input.phoneNumber?.trim() || null;
 
   // 1. Idempotency Check
   if (input.idempotencyKey) {
@@ -199,6 +203,7 @@ export async function registerLaptop(input: RegisterLaptopInput): Promise<Regist
         collectionId,
         studentId: normalizedStudentId,
         studentName: normalizedStudentName,
+        phoneNumber: normalizedPhoneNumber,
         branch,
         batch: input.batch,
         isSubmitterPresent: input.isSubmitterPresent,
@@ -242,6 +247,7 @@ export async function registerLaptop(input: RegisterLaptopInput): Promise<Regist
         collectionId: newRecord.collectionId,
         studentId: newRecord.studentId,
         studentName: newRecord.studentName,
+        phoneNumber: newRecord.phoneNumber,
         branch: newRecord.branch,
         batch: newRecord.batch,
         allocationStatus: newRecord.allocationStatus,
@@ -263,7 +269,7 @@ export async function registerLaptop(input: RegisterLaptopInput): Promise<Regist
     }
 
     return responseData;
-  });
+  }, { maxWait: 15000, timeout: 25000 });
 
   return result;
 }
@@ -337,5 +343,5 @@ export async function updateLaptopRecordAudited(
     });
 
     return updated;
-  });
+  }, { maxWait: 15000, timeout: 25000 });
 }

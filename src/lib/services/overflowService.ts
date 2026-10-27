@@ -227,5 +227,5 @@ export async function executeCrossBlockTransfer(
       transferRecord,
       transferredCount: transferLimit,
     };
-  });
+  }, { maxWait: 15000, timeout: 25000 });
 }

@@ -6,8 +6,9 @@ import { Batch } from '@prisma/client';
 
 const registerSchema = z.object({
   studentId: z.string().trim().min(1, 'Student ID is required'),
+  studentName: z.string().trim().min(1, 'Student Name is required'),
+  phoneNumber: z.string().trim().min(10, 'Valid Phone Number is required (at least 10 digits)'),
   batch: z.enum([Batch.O23, Batch.O21], { message: 'Batch must be O23 or O21' }),
-  studentName: z.string().trim().optional(),
   isSubmitterPresent: z.boolean().default(true),
   submitterStudentId: z.string().trim().optional(),
   idempotencyKey: z.string().trim().optional(),
@@ -46,6 +47,7 @@ export async function POST(req: NextRequest) {
       studentId: data.studentId,
       batch: data.batch,
       studentName: data.studentName,
+      phoneNumber: data.phoneNumber,
       isSubmitterPresent: data.isSubmitterPresent,
       submitterStudentId: data.submitterStudentId,
       collectorId: user.id,

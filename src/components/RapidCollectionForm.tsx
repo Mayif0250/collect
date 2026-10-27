@@ -9,6 +9,9 @@ import {
   UserCheck,
   UserX,
   ShieldAlert,
+  Phone,
+  User,
+  Hash,
 } from 'lucide-react';
 import { StandardCard } from '@/components/ui/StandardCard';
 
@@ -29,10 +32,11 @@ export default function RapidCollectionForm({
 }: RapidCollectionFormProps) {
   const studentIdInputRef = useRef<HTMLInputElement>(null);
 
-  // Form states
+  // Form states - Student ID, Student Name, and Phone Number are MUST
   const [studentId, setStudentId] = useState('');
-  const [batch, setBatch] = useState<'O23' | 'O21'>('O23'); // Persisted across entries
   const [studentName, setStudentName] = useState('');
+  const [phoneNumber, setPhoneNumber] = useState('');
+  const [batch, setBatch] = useState<'O23' | 'O21'>('O23'); // Persisted across entries
   const [isSubmitterPresent, setIsSubmitterPresent] = useState(true);
   const [submitterStudentId, setSubmitterStudentId] = useState('');
 
@@ -42,6 +46,8 @@ export default function RapidCollectionForm({
   const [lastSaved, setLastSaved] = useState<{
     collectionId: string;
     studentId: string;
+    studentName: string | null;
+    phoneNumber: string | null;
     roomName: string | null;
     seatNumber: number | null;
     allocationStatus: string;
@@ -65,13 +71,25 @@ export default function RapidCollectionForm({
 
     const normalizedStudentId = studentId.trim().toUpperCase();
     if (!normalizedStudentId) {
-      setErrorMessage('Please enter a Student ID (e.g. O230250).');
+      setErrorMessage('Student ID is required (e.g. O230250).');
       studentIdInputRef.current?.focus();
       return;
     }
 
+    const normalizedStudentName = studentName.trim();
+    if (!normalizedStudentName) {
+      setErrorMessage('Student Name is required.');
+      return;
+    }
+
+    const cleanedPhone = phoneNumber.replace(/[^0-9]/g, '');
+    if (!cleanedPhone || cleanedPhone.length < 10) {
+      setErrorMessage('A valid 10-digit Phone Number is required.');
+      return;
+    }
+
     if (!isSubmitterPresent && !submitterStudentId.trim()) {
-      setErrorMessage('Please enter the Physical Submitter Student ID.');
+      setErrorMessage('Physical Submitter Student ID is required when registered student is not present.');
       return;
     }
 
@@ -88,8 +106,9 @@ export default function RapidCollectionForm({
     try {
       const payload: any = {
         studentId: normalizedStudentId,
+        studentName: normalizedStudentName,
+        phoneNumber: cleanedPhone,
         batch,
-        studentName: studentName.trim() || undefined,
         isSubmitterPresent,
         submitterStudentId: isSubmitterPresent ? undefined : submitterStudentId.trim().toUpperCase(),
         idempotencyKey,
@@ -126,15 +145,18 @@ export default function RapidCollectionForm({
       setLastSaved({
         collectionId: data.record.collectionId,
         studentId: data.record.studentId,
+        studentName: data.record.studentName,
+        phoneNumber: data.record.phoneNumber,
         roomName: data.record.roomName,
         seatNumber: data.record.seatNumber,
         allocationStatus: data.record.allocationStatus,
         timestamp: new Date(),
       });
 
-      // Reset form while keeping batch choice
+      // Reset entry fields while keeping batch choice
       setStudentId('');
       setStudentName('');
+      setPhoneNumber('');
       setSubmitterStudentId('');
       setIsSubmitterPresent(true);
       setDuplicateWarning(null);
@@ -166,7 +188,7 @@ export default function RapidCollectionForm({
               {collectorDepartment} Station
             </span>
             <span className="text-xs font-bold text-[#7A7772] uppercase tracking-wider">
-              Rapid Collection Entry
+              Rapid Collection Form
             </span>
           </div>
 
@@ -180,7 +202,7 @@ export default function RapidCollectionForm({
       }
     >
       <div className="space-y-4">
-        {/* Subtitle instructions */}
+        {/* Status text */}
         <p className="text-xs text-[#6B7280]">
           {isPrimaryBlockFull ? (
             <span className="text-[#B45309] font-medium">Primary Block at 100% Capacity → Saving to Backup Inventory</span>
@@ -214,7 +236,7 @@ export default function RapidCollectionForm({
                   </span>
                 </div>
                 <div className="text-xs text-[#166534]">
-                  Student: <strong className="font-mono text-[#14532D]">{lastSaved.studentId}</strong> • Assigned:{' '}
+                  <strong>{lastSaved.studentName}</strong> (<span className="font-mono">{lastSaved.studentId}</span> • Ph: {lastSaved.phoneNumber}) →{' '}
                   <strong className="text-[#14532D]">
                     {lastSaved.allocationStatus === 'BACKUP'
                       ? 'Backup Storage'
@@ -302,32 +324,35 @@ export default function RapidCollectionForm({
           </div>
         )}
 
-        {/* Form Inputs */}
+        {/* Rapid Collection Form Fields */}
         <form onSubmit={(e) => handleSubmit(e, false)} className="space-y-4">
+          {/* Row 1: Student ID & Batch */}
           <div className="grid grid-cols-1 md:grid-cols-12 gap-3.5">
-            {/* Student ID */}
-            <div className="md:col-span-5">
+            {/* Student ID (MUST) */}
+            <div className="md:col-span-8">
               <label
                 htmlFor="studentId"
                 className="block text-xs font-semibold text-[#4B5563] uppercase tracking-wider mb-1.5"
               >
                 Student ID <span className="text-red-500">*</span>
               </label>
-              <input
-                id="studentId"
-                ref={studentIdInputRef}
-                type="text"
-                required
-                value={studentId}
-                onChange={(e) => setStudentId(e.target.value.toUpperCase())}
-                placeholder="e.g. O230250"
-                autoComplete="off"
-                className="w-full text-lg sm:text-xl font-mono font-bold px-3.5 py-2.5 rounded-xl border border-[#E5E7EB] bg-[#F9FAFB] focus:bg-white focus:ring-2 focus:ring-[#030213]/10 focus:border-[#030213] uppercase placeholder:normal-case placeholder:font-sans placeholder:font-normal placeholder:text-[#9CA3AF] transition-all"
-              />
+              <div className="relative">
+                <input
+                  id="studentId"
+                  ref={studentIdInputRef}
+                  type="text"
+                  required
+                  value={studentId}
+                  onChange={(e) => setStudentId(e.target.value.toUpperCase())}
+                  placeholder="e.g. O230250"
+                  autoComplete="off"
+                  className="w-full text-base sm:text-lg font-mono font-bold px-3.5 py-2.5 rounded-xl border border-[#E5E7EB] bg-[#F9FAFB] focus:bg-white focus:ring-2 focus:ring-[#030213]/10 focus:border-[#030213] uppercase placeholder:normal-case placeholder:font-sans placeholder:font-normal placeholder:text-[#9CA3AF] transition-all"
+                />
+              </div>
             </div>
 
-            {/* Preserved Batch Segmented Selector */}
-            <div className="md:col-span-3">
+            {/* Preserved Batch Selector */}
+            <div className="md:col-span-4">
               <label className="block text-xs font-semibold text-[#4B5563] uppercase tracking-wider mb-1.5">
                 Batch <span className="text-red-500">*</span>
               </label>
@@ -356,23 +381,50 @@ export default function RapidCollectionForm({
                 </button>
               </div>
             </div>
+          </div>
 
-            {/* Student Name (Optional) */}
-            <div className="md:col-span-4">
+          {/* Row 2: Student Name (MUST) & Phone Number (MUST) */}
+          <div className="grid grid-cols-1 md:grid-cols-12 gap-3.5">
+            {/* Student Name */}
+            <div className="md:col-span-6">
               <label
                 htmlFor="studentName"
                 className="block text-xs font-semibold text-[#4B5563] uppercase tracking-wider mb-1.5"
               >
-                Student Name <span className="text-[#9CA3AF] font-normal text-[10px] lowercase">(optional)</span>
+                Student Name <span className="text-red-500">*</span>
               </label>
-              <input
-                id="studentName"
-                type="text"
-                value={studentName}
-                onChange={(e) => setStudentName(e.target.value)}
-                placeholder="Name from ID card"
-                className="w-full text-xs px-3.5 py-3 rounded-xl border border-[#E5E7EB] bg-[#F9FAFB] focus:bg-white focus:ring-2 focus:ring-[#030213]/10 focus:border-[#030213] transition-all"
-              />
+              <div className="relative">
+                <input
+                  id="studentName"
+                  type="text"
+                  required
+                  value={studentName}
+                  onChange={(e) => setStudentName(e.target.value)}
+                  placeholder="e.g. Jane Doe"
+                  className="w-full text-xs px-3.5 py-2.5 rounded-xl border border-[#E5E7EB] bg-[#F9FAFB] focus:bg-white focus:ring-2 focus:ring-[#030213]/10 focus:border-[#030213] transition-all"
+                />
+              </div>
+            </div>
+
+            {/* Phone Number */}
+            <div className="md:col-span-6">
+              <label
+                htmlFor="phoneNumber"
+                className="block text-xs font-semibold text-[#4B5563] uppercase tracking-wider mb-1.5"
+              >
+                Phone Number <span className="text-red-500">*</span>
+              </label>
+              <div className="relative">
+                <input
+                  id="phoneNumber"
+                  type="tel"
+                  required
+                  value={phoneNumber}
+                  onChange={(e) => setPhoneNumber(e.target.value)}
+                  placeholder="e.g. 9876543210 (10 digits)"
+                  className="w-full text-xs font-mono px-3.5 py-2.5 rounded-xl border border-[#E5E7EB] bg-[#F9FAFB] focus:bg-white focus:ring-2 focus:ring-[#030213]/10 focus:border-[#030213] transition-all"
+                />
+              </div>
             </div>
           </div>
 
@@ -411,7 +463,7 @@ export default function RapidCollectionForm({
 
             {!isSubmitterPresent && (
               <div className="flex items-center gap-2 w-full sm:w-auto animate-in fade-in">
-                <span className="text-[#B45309] font-semibold whitespace-nowrap">Submitter ID:</span>
+                <span className="text-[#B45309] font-semibold whitespace-nowrap">Proxy ID:</span>
                 <input
                   type="text"
                   required

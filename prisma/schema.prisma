@@ -104,6 +104,7 @@ model LaptopRecord {
   collectionId         String              @unique
   studentId            String
   studentName          String?
+  phoneNumber          String?
   branch               Department
   batch                Batch
   isSubmitterPresent   Boolean             @default(true)

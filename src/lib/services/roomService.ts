@@ -241,7 +241,7 @@ export async function claimRoom(collectorId: string, roomId: string) {
     });
 
     return newClaim;
-  });
+  }, { maxWait: 15000, timeout: 25000 });
 }
 
 /**
@@ -283,7 +283,7 @@ export async function completeRoom(collectorId: string, roomId: string) {
     });
 
     return updatedClaim;
-  });
+  }, { maxWait: 15000, timeout: 25000 });
 }
 
 /**
@@ -323,7 +323,7 @@ export async function releaseRoomClaim(adminId: string, claimId: string, reason:
     });
 
     return updatedClaim;
-  });
+  }, { maxWait: 15000, timeout: 25000 });
 }
 
 /**
@@ -388,5 +388,5 @@ export async function reassignRoomClaim(adminId: string, claimId: string, newCol
     });
 
     return newClaim;
-  });
+  }, { maxWait: 15000, timeout: 25000 });
 }
