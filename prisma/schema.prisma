@@ -1,0 +1,186 @@
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "postgresql"
+  url      = env("DATABASE_URL")
+}
+
+enum Role {
+  ADMIN
+  CSE_COLLECTOR
+  ECE_COLLECTOR
+}
+
+enum Department {
+  CSE
+  ECE
+  ALL
+}
+
+enum Block {
+  E
+  F
+}
+
+enum Batch {
+  O23
+  O21
+}
+
+enum AllocationStatus {
+  PRIMARY
+  BACKUP
+  CROSS_BLOCK
+}
+
+enum ClaimStatus {
+  ACTIVE
+  COMPLETED
+  RELEASED
+  REASSIGNED
+}
+
+model User {
+  id                  String               @id @default(cuid())
+  name                String
+  username            String               @unique
+  passwordHash        String
+  role                Role
+  permittedDepartment Department
+  isActive            Boolean              @default(true)
+  createdAt           DateTime             @default(now())
+  updatedAt           DateTime             @updatedAt
+
+  roomClaims          RoomClaim[]          @relation("CollectorClaims")
+  laptopRecords       LaptopRecord[]       @relation("CollectorRecords")
+  auditLogs           AuditLog[]           @relation("UserAudits")
+  transfersAuthorized CrossBlockTransfer[] @relation("AdminTransfers")
+  reassignedClaims    RoomClaim[]          @relation("ReassignedToUser")
+
+  @@index([username])
+  @@index([role, isActive])
+}
+
+model Room {
+  id        String    @id @default(cuid())
+  block     Block
+  name      String    @unique
+  roomOrder Int
+  capacity  Int
+  isActive  Boolean   @default(true)
+  createdAt DateTime  @default(now())
+  updatedAt DateTime  @updatedAt
+
+  claims    RoomClaim[]
+  laptops   LaptopRecord[]
+
+  @@index([block, roomOrder])
+}
+
+model RoomClaim {
+  id                      String      @id @default(cuid())
+  roomId                  String
+  collectorId             String
+  status                  ClaimStatus @default(ACTIVE)
+  claimedAt               DateTime    @default(now())
+  completedAt             DateTime?
+  releasedAt              DateTime?
+  releaseReason           String?
+  reassignedToCollectorId String?
+  auditAdminId            String?
+
+  room                    Room        @relation(fields: [roomId], references: [id])
+  collector               User        @relation("CollectorClaims", fields: [collectorId], references: [id])
+  reassignedToCollector   User?       @relation("ReassignedToUser", fields: [reassignedToCollectorId], references: [id])
+
+  @@index([roomId, status])
+  @@index([collectorId, status])
+}
+
+model LaptopRecord {
+  id                   String              @id @default(cuid())
+  collectionId         String              @unique
+  studentId            String
+  studentName          String?
+  branch               Department
+  batch                Batch
+  isSubmitterPresent   Boolean             @default(true)
+  submitterStudentId   String?
+  primaryBlock         Block
+  allocationStatus     AllocationStatus    @default(PRIMARY)
+  roomId               String?
+  seatNumber           Int?
+  collectorId          String
+  isDuplicateOverride  Boolean             @default(false)
+  duplicateReason      String?
+  idempotencyKey       String?             @unique
+  crossBlockTransferId String?
+  createdAt            DateTime            @default(now())
+  updatedAt            DateTime            @updatedAt
+
+  room                 Room?               @relation(fields: [roomId], references: [id])
+  collector            User                @relation("CollectorRecords", fields: [collectorId], references: [id])
+  crossBlockTransfer   CrossBlockTransfer? @relation(fields: [crossBlockTransferId], references: [id])
+
+  @@unique([roomId, seatNumber])
+  @@index([studentId])
+  @@index([branch, allocationStatus])
+  @@index([roomId])
+  @@index([collectorId])
+}
+
+model CrossBlockTransfer {
+  id               String         @id @default(cuid())
+  adminId          String
+  sourceDept       Department
+  destinationBlock Block
+  laptopCount      Int
+  reason           String
+  createdAt        DateTime       @default(now())
+
+  admin            User           @relation("AdminTransfers", fields: [adminId], references: [id])
+  laptopRecords    LaptopRecord[]
+
+  @@index([createdAt])
+}
+
+model CollectionSession {
+  id            String    @id @default(cuid())
+  sessionName   String    @default("College Laptop Collection")
+  isActive      Boolean   @default(false)
+  initializedBy String?
+  activatedAt   DateTime?
+  closedAt      DateTime?
+  createdAt     DateTime  @default(now())
+  updatedAt     DateTime  @updatedAt
+}
+
+model AuditLog {
+  id            String    @id @default(cuid())
+  userId        String?
+  action        String
+  entityType    String
+  entityId      String?
+  previousValue Json?
+  newValue      Json?
+  reason        String?
+  ipAddress     String?
+  createdAt     DateTime  @default(now())
+
+  user          User?     @relation("UserAudits", fields: [userId], references: [id])
+
+  @@index([entityType, entityId])
+  @@index([action])
+  @@index([createdAt])
+}
+
+model IdempotencyRecord {
+  id           String   @id @default(cuid())
+  key          String   @unique
+  responseJson String
+  createdAt    DateTime @default(now())
+
+  @@index([key])
+}
