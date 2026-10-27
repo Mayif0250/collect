@@ -104,7 +104,7 @@ export async function seedDatabase() {
 
   // 2. Seed Initial Administrator
   const adminUsername = process.env.ADMIN_USERNAME || 'admin';
-  const adminPassword = process.env.ADMIN_PASSWORD || 'AdminPassword123!';
+  const adminPassword = process.env.ADMIN_PASSWORD || 'admin123';
   const adminName = process.env.ADMIN_NAME || 'System Administrator';
 
   const adminPasswordHash = await bcrypt.hash(adminPassword, 10);
@@ -129,18 +129,19 @@ export async function seedDatabase() {
   });
   console.log(`Admin user seeded: ${adminUser.username} (${adminUser.name})`);
 
-  // 3. Seed Default Collectors for operation / demo
-  const cseCollectorPasswordHash = await bcrypt.hash('Collector123!', 10);
+  // 3. Seed Default Collectors for operation
+  const cseCollectorPasswordHash = await bcrypt.hash('cse123', 10);
   const cseCollector = await prisma.user.upsert({
     where: { username: 'cse_collector' },
     update: {
-      name: 'CSE Collector 1',
+      name: 'CSE Collector',
+      passwordHash: cseCollectorPasswordHash,
       role: Role.CSE_COLLECTOR,
       permittedDepartment: Department.CSE,
       isActive: true,
     },
     create: {
-      name: 'CSE Collector 1',
+      name: 'CSE Collector',
       username: 'cse_collector',
       passwordHash: cseCollectorPasswordHash,
       role: Role.CSE_COLLECTOR,
@@ -150,17 +151,18 @@ export async function seedDatabase() {
   });
   console.log(`CSE collector seeded: ${cseCollector.username}`);
 
-  const eceCollectorPasswordHash = await bcrypt.hash('Collector123!', 10);
+  const eceCollectorPasswordHash = await bcrypt.hash('ece123', 10);
   const eceCollector = await prisma.user.upsert({
     where: { username: 'ece_collector' },
     update: {
-      name: 'ECE Collector 1',
+      name: 'ECE Collector',
+      passwordHash: eceCollectorPasswordHash,
       role: Role.ECE_COLLECTOR,
       permittedDepartment: Department.ECE,
       isActive: true,
     },
     create: {
-      name: 'ECE Collector 1',
+      name: 'ECE Collector',
       username: 'ece_collector',
       passwordHash: eceCollectorPasswordHash,
       role: Role.ECE_COLLECTOR,

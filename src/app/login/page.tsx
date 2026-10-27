@@ -6,8 +6,8 @@ import { Lock, User, AlertCircle, ArrowRight, Eye, EyeOff } from 'lucide-react';
 
 const ROLES = [
   { id: 'admin', label: 'System Administrator', description: 'Full System & Transfers', defaultUsername: 'admin' },
-  { id: 'cse_collector', label: 'CSE Collector', description: 'E Block Allocation', defaultUsername: 'cse_collector_1' },
-  { id: 'ece_collector', label: 'ECE Collector', description: 'F Block Allocation', defaultUsername: 'ece_collector_1' },
+  { id: 'cse_collector', label: 'CSE Collector', description: 'E Block Allocation', defaultUsername: 'cse_collector' },
+  { id: 'ece_collector', label: 'ECE Collector', description: 'F Block Allocation', defaultUsername: 'ece_collector' },
   { id: 'custom', label: 'Manual Entry', description: 'Custom Username', defaultUsername: '' },
 ];
 

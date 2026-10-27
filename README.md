@@ -99,9 +99,9 @@ After running `npm run db:seed`:
 
 | Role | Username | Password | Permitted Department / Block |
 |---|---|---|---|
-| **Administrator** | `admin` | `AdminPassword123!` | All Departments / All Blocks |
-| **CSE Collector** | `cse_collector` | `Collector123!` | CSE Department / E Block Only |
-| **ECE Collector** | `ece_collector` | `Collector123!` | ECE Department / F Block Only |
+| **Administrator** | `admin` | `admin123` | All Departments / All Blocks |
+| **CSE Collector** | `cse_collector` | `cse123` | CSE Department / E Block Only |
+| **ECE Collector** | `ece_collector` | `ece123` | ECE Department / F Block Only |
 
 ---
 
