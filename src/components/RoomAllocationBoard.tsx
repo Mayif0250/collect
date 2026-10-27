@@ -1,7 +1,18 @@
 'use client';
 
 import React, { useState } from 'react';
-import { LayoutGrid, CheckCircle2, Clock, User, Eye, Search, X } from 'lucide-react';
+import {
+  LayoutGrid,
+  CheckCircle2,
+  Clock,
+  User,
+  Eye,
+  Search,
+  X,
+  Layers,
+  ArrowRight,
+} from 'lucide-react';
+import { StandardCard } from '@/components/ui/StandardCard';
 
 export interface RoomData {
   id: string;
@@ -36,7 +47,6 @@ export default function RoomAllocationBoard({ rooms, onSelectRoom, isAdmin = fal
   const [isLoadingDetails, setIsLoadingDetails] = useState(false);
   const [seatSearch, setSeatSearch] = useState('');
 
-  // Keep strictly sorted by block and configured roomOrder
   const filteredRooms = rooms.filter((r) => {
     if (selectedBlock === 'ALL') return true;
     return r.block === selectedBlock;
@@ -71,42 +81,69 @@ export default function RoomAllocationBoard({ rooms, onSelectRoom, isAdmin = fal
 
   return (
     <div className="space-y-6">
-      {/* Block Summaries & Filter */}
-      <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4 bg-white p-4 rounded-xl border border-slate-200">
-        <div className="flex items-center gap-2">
-          <LayoutGrid className="w-5 h-5 text-blue-900" />
-          <h3 className="font-bold text-slate-900 text-sm sm:text-base">Authoritative Room Allocation Board (18 Rooms)</h3>
-        </div>
+      {/* Block Summaries & Filter Header inside StandardCard */}
+      <StandardCard
+        header={
+          <div className="flex justify-between items-center">
+            <span className="text-xs font-bold text-[#7A7772] uppercase tracking-wider">
+              Room Sequencing & Live Status
+            </span>
+            <span className="text-xs font-mono text-[#9CA3AF]">
+              Order 1..13 (E Block) • Order 1..5 (F Block)
+            </span>
+          </div>
+        }
+      >
+        <div className="flex flex-col md:flex-row justify-between items-start md:items-center gap-4">
+          <div>
+            <div className="flex items-center gap-2">
+              <h3 className="font-bold text-[#1A1A1A] text-base sm:text-lg tracking-tight">
+                Authoritative Room Allocation Board
+              </h3>
+              <span className="text-xs bg-[#F4F2F0] text-[#4B5563] font-bold px-2.5 py-0.5 rounded-md border border-[#E5E7EB]">
+                18 Rooms
+              </span>
+            </div>
+            <p className="text-xs text-[#6B7280] mt-0.5">
+              E Block: CSE Primary Queue (420 Seats) • F Block: ECE Primary Queue (141 Seats)
+            </p>
+          </div>
 
-        <div className="flex items-center gap-2">
-          <div className="inline-flex rounded-lg border border-slate-200 p-0.5 bg-slate-50 text-xs font-semibold">
+          {/* Tab Filter Pills */}
+          <div className="inline-flex rounded-xl border border-[#E5E7EB] p-1 bg-[#F4F2F0] text-xs font-semibold">
             <button
               onClick={() => setSelectedBlock('ALL')}
-              className={`px-3 py-1.5 rounded-md transition-colors ${
-                selectedBlock === 'ALL' ? 'bg-white text-slate-900 shadow-2xs' : 'text-slate-600 hover:text-slate-900'
+              className={`btn-interaction px-3.5 py-1.5 rounded-lg transition-all cursor-pointer ${
+                selectedBlock === 'ALL'
+                  ? 'bg-white text-[#1A1A1A] shadow-xs'
+                  : 'text-[#6B7280] hover:text-[#1A1A1A]'
               }`}
             >
-              All Rooms (18)
+              All 18 Rooms
             </button>
             <button
               onClick={() => setSelectedBlock('E')}
-              className={`px-3 py-1.5 rounded-md transition-colors ${
-                selectedBlock === 'E' ? 'bg-blue-900 text-white shadow-2xs' : 'text-slate-600 hover:text-slate-900'
+              className={`btn-interaction px-3.5 py-1.5 rounded-lg transition-all cursor-pointer ${
+                selectedBlock === 'E'
+                  ? 'bg-[#030213] text-white shadow-xs'
+                  : 'text-[#6B7280] hover:text-[#1A1A1A]'
               }`}
             >
               E Block (CSE • {eTotalOccupied}/{eTotalCapacity})
             </button>
             <button
               onClick={() => setSelectedBlock('F')}
-              className={`px-3 py-1.5 rounded-md transition-colors ${
-                selectedBlock === 'F' ? 'bg-indigo-900 text-white shadow-2xs' : 'text-slate-600 hover:text-slate-900'
+              className={`btn-interaction px-3.5 py-1.5 rounded-lg transition-all cursor-pointer ${
+                selectedBlock === 'F'
+                  ? 'bg-[#030213] text-white shadow-xs'
+                  : 'text-[#6B7280] hover:text-[#1A1A1A]'
               }`}
             >
               F Block (ECE • {fTotalOccupied}/{fTotalCapacity})
             </button>
           </div>
         </div>
-      </div>
+      </StandardCard>
 
       {/* Grid of rooms in configured sequence */}
       <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-4">
@@ -115,92 +152,104 @@ export default function RoomAllocationBoard({ rooms, onSelectRoom, isAdmin = fal
           return (
             <div
               key={room.id}
-              className={`bg-white rounded-xl border transition-all duration-150 overflow-hidden shadow-2xs ${
-                room.activeClaim
-                  ? 'border-blue-400 ring-2 ring-blue-100'
-                  : room.isFull
-                  ? 'border-slate-300 bg-slate-50/50'
-                  : 'border-slate-200 hover:border-slate-300'
+              className={`bg-[#F4F2F0] rounded-[22px] p-[8px] pb-[14px] flex flex-col justify-between hover-card-effect animate-card-entrance ${
+                room.activeClaim ? 'ring-2 ring-blue-500/40' : ''
               }`}
             >
-              <div className="p-4 space-y-3">
-                {/* Header with order badge and name */}
-                <div className="flex items-start justify-between">
-                  <div className="flex items-center gap-2">
-                    <span className="text-[10px] font-bold font-mono px-1.5 py-0.5 rounded bg-slate-100 text-slate-600 border border-slate-200">
-                      #{room.roomOrder}
-                    </span>
-                    <h4 className="font-bold text-slate-900 text-base">{room.name}</h4>
-                  </div>
-                  <span
-                    className={`text-[10px] font-bold px-2 py-0.5 rounded-full uppercase tracking-wider ${
-                      isEBlock
-                        ? 'bg-blue-50 text-blue-800 border border-blue-200'
-                        : 'bg-indigo-50 text-indigo-800 border border-indigo-200'
-                    }`}
-                  >
-                    {room.block} Block ({isEBlock ? 'CSE' : 'ECE'})
-                  </span>
-                </div>
-
-                {/* Progress bar and numbers */}
-                <div>
-                  <div className="flex justify-between items-baseline text-xs mb-1">
-                    <span className="font-semibold text-slate-700">
-                      Occupancy: <strong className="font-bold text-slate-900">{room.occupiedSeats}</strong> / {room.capacity}
-                    </span>
-                    <span className="text-slate-500 font-mono text-[11px] font-medium">{room.occupancyPercentage}%</span>
-                  </div>
-                  <div className="w-full bg-slate-100 rounded-full h-2 overflow-hidden border border-slate-200">
-                    <div
-                      className={`h-full rounded-full transition-all duration-300 ${
-                        room.isFull
-                          ? 'bg-emerald-600'
-                          : room.occupancyPercentage > 60
-                          ? 'bg-blue-600'
-                          : 'bg-blue-500'
-                      }`}
-                      style={{ width: `${Math.min(room.occupancyPercentage, 100)}%` }}
-                    />
-                  </div>
-                  <div className="flex justify-between text-[11px] text-slate-500 mt-1">
-                    <span>Vacant: <strong className="text-slate-800">{room.vacantSeats}</strong> seats</span>
-                    <span>{room.isFull ? 'FULL' : 'AVAILABLE'}</span>
-                  </div>
-                </div>
-
-                {/* Claim Status Badge */}
-                <div className="pt-2 border-t border-slate-100">
-                  {room.activeClaim ? (
-                    <div className="flex items-center gap-1.5 text-xs text-blue-900 bg-blue-50/80 p-2 rounded-lg border border-blue-200">
-                      <User className="w-3.5 h-3.5 text-blue-700 shrink-0" />
-                      <div className="truncate">
-                        <span className="text-[10px] font-semibold text-blue-600 uppercase block">Active Collector</span>
-                        <strong className="truncate font-semibold">{room.activeClaim.collectorName}</strong>
+              <div className="bg-white border border-[#E5E7EB] rounded-[16px] p-4 sm:p-5 space-y-3.5 shadow-2xs flex-1 flex flex-col justify-between">
+                <div className="space-y-3">
+                  {/* Header: Order & Name */}
+                  <div className="flex items-start justify-between">
+                    <div>
+                      <div className="flex items-center gap-1.5">
+                        <span className="text-[10px] font-mono font-bold px-1.5 py-0.5 rounded-md bg-[#F3F4F6] text-[#4B5563] border border-[#E5E7EB]">
+                          Order #{room.roomOrder}
+                        </span>
+                        <span
+                          className={`text-[9px] font-bold uppercase tracking-wider px-1.5 py-0.5 rounded-md border ${
+                            isEBlock
+                              ? 'bg-[#DBEAFE] text-[#1E40AF] border-[#BFDBFE]'
+                              : 'bg-[#EDE9FE] text-[#5B21B6] border-[#DDD6FE]'
+                          }`}
+                        >
+                          {room.block} Block ({isEBlock ? 'CSE' : 'ECE'})
+                        </span>
                       </div>
+                      <h4 className="font-bold text-[#1A1A1A] text-lg sm:text-xl tracking-tight mt-1.5">
+                        {room.name}
+                      </h4>
                     </div>
-                  ) : room.isFull ? (
-                    <div className="flex items-center gap-1.5 text-xs text-emerald-800 bg-emerald-50/80 p-2 rounded-lg border border-emerald-200">
-                      <CheckCircle2 className="w-3.5 h-3.5 text-emerald-600 shrink-0" />
-                      <span className="font-medium">Capacity Reached & Completed</span>
+
+                    <span className="text-xs font-semibold text-[#6B7280] font-mono">
+                      {room.capacity} Cap
+                    </span>
+                  </div>
+
+                  {/* Occupancy bar */}
+                  <div>
+                    <div className="flex justify-between items-baseline text-xs mb-1.5">
+                      <span className="font-medium text-[#4B5563]">
+                        Seats: <strong className="font-bold text-[#1A1A1A] font-mono">{room.occupiedSeats}</strong> / {room.capacity}
+                      </span>
+                      <span className="font-mono text-[#6B7280] font-bold text-xs">
+                        {room.occupancyPercentage}%
+                      </span>
                     </div>
-                  ) : (
-                    <div className="flex items-center gap-1.5 text-xs text-slate-500 bg-slate-50 p-2 rounded-lg border border-slate-200">
-                      <Clock className="w-3.5 h-3.5 text-slate-400 shrink-0" />
-                      <span className="font-medium">Unclaimed & Ready in Queue</span>
+                    <div className="w-full bg-[#F3F4F6] rounded-full h-2 overflow-hidden border border-[#E5E7EB]">
+                      <div
+                        className={`h-full rounded-full transition-all duration-300 ${
+                          room.isFull
+                            ? 'bg-[#16A34A]'
+                            : room.occupancyPercentage > 60
+                            ? 'bg-blue-600'
+                            : 'bg-[#030213]'
+                        }`}
+                        style={{ width: `${Math.min(room.occupancyPercentage, 100)}%` }}
+                      />
                     </div>
-                  )}
+                    <div className="flex justify-between text-[11px] text-[#6B7280] mt-1.5">
+                      <span>Vacant: <strong className="text-[#1A1A1A] font-mono">{room.vacantSeats}</strong></span>
+                      <span className="font-bold text-[10px] uppercase tracking-wider text-[#9CA3AF]">
+                        {room.isFull ? 'Completed' : 'Available'}
+                      </span>
+                    </div>
+                  </div>
+
+                  {/* Status Indicator */}
+                  <div className="pt-2 border-t border-[#E5E7EB]">
+                    {room.activeClaim ? (
+                      <div className="flex items-center gap-2 p-2 rounded-xl bg-blue-50 border border-blue-200 text-xs text-blue-900">
+                        <span className="w-2 h-2 rounded-full bg-blue-600 animate-pulse shrink-0" />
+                        <div className="truncate">
+                          <span className="text-[9px] uppercase font-bold text-blue-600 tracking-wider block">Active Collector</span>
+                          <strong className="truncate font-bold block">{room.activeClaim.collectorName}</strong>
+                        </div>
+                      </div>
+                    ) : room.isFull ? (
+                      <div className="flex items-center gap-2 p-2 rounded-xl bg-[#DCFCE7] border border-[#BBF7D0] text-xs text-[#15803D]">
+                        <CheckCircle2 className="w-4 h-4 text-[#16A34A] shrink-0" />
+                        <span className="font-semibold">All {room.capacity} Seats Filled</span>
+                      </div>
+                    ) : (
+                      <div className="flex items-center gap-2 p-2 rounded-xl bg-[#F9FAFB] border border-[#E5E7EB] text-xs text-[#6B7280]">
+                        <Clock className="w-3.5 h-3.5 text-[#9CA3AF] shrink-0" />
+                        <span>Ready in Sequence</span>
+                      </div>
+                    )}
+                  </div>
                 </div>
 
-                {/* Inspect button */}
-                <button
-                  type="button"
-                  onClick={() => handleInspectRoom(room)}
-                  className="w-full mt-1 py-1.5 text-xs font-semibold text-slate-700 bg-slate-50 hover:bg-slate-100 border border-slate-200 rounded-lg flex items-center justify-center gap-1.5 transition-colors cursor-pointer"
-                >
-                  <Eye className="w-3.5 h-3.5 text-slate-500" />
-                  <span>Inspect Numbered Seats</span>
-                </button>
+                {/* Inspect Action */}
+                <div className="pt-3">
+                  <button
+                    type="button"
+                    onClick={() => handleInspectRoom(room)}
+                    className="btn-interaction w-full py-2 text-xs font-semibold text-[#1A1A1A] bg-[#F9FAFB] hover:bg-[#F3F4F6] border border-[#E5E7EB] rounded-xl flex items-center justify-center gap-1.5 shadow-2xs cursor-pointer"
+                  >
+                    <Eye className="w-3.5 h-3.5 text-[#6B7280]" />
+                    <span>Inspect Seat Map</span>
+                  </button>
+                </div>
               </div>
             </div>
           );
@@ -209,26 +258,28 @@ export default function RoomAllocationBoard({ rooms, onSelectRoom, isAdmin = fal
 
       {/* Numbered Seat Inspector Modal */}
       {inspectorRoom && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center bg-slate-900/60 p-4 animate-in fade-in">
-          <div className="bg-white rounded-2xl max-w-2xl w-full max-h-[90vh] flex flex-col shadow-xl border border-slate-200">
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/40 backdrop-blur-xs p-4 animate-in fade-in">
+          <div className="bg-white rounded-[24px] max-w-2xl w-full max-h-[90vh] flex flex-col shadow-2xl border border-[#E5E7EB] overflow-hidden">
             {/* Modal Header */}
-            <div className="px-6 py-4 border-b border-slate-200 flex justify-between items-center bg-slate-50 rounded-t-2xl">
+            <div className="px-6 py-4 border-b border-[#E5E7EB] flex justify-between items-center bg-[#F4F2F0] rounded-t-[24px]">
               <div>
-                <div className="flex items-center gap-2">
-                  <h3 className="font-bold text-slate-900 text-lg">
-                    Room {inspectorRoom.name} — Seat Inspection
+                <div className="flex items-center gap-2.5">
+                  <h3 className="font-bold text-[#1A1A1A] text-lg">
+                    Room {inspectorRoom.name} Seat Map
                   </h3>
-                  <span className="text-xs font-semibold px-2 py-0.5 rounded bg-blue-100 text-blue-800">
-                    {inspectorRoom.block} Block (Order #{inspectorRoom.roomOrder})
+                  <span className="text-xs font-bold px-2.5 py-0.5 rounded-md bg-[#DBEAFE] text-[#1E40AF]">
+                    {inspectorRoom.block} Block • #{inspectorRoom.roomOrder}
                   </span>
                 </div>
-                <p className="text-xs text-slate-500 mt-0.5">
-                  Capacity: {inspectorRoom.capacity} Seats • Occupied: {inspectorRoom.occupiedSeats} • Vacant: {inspectorRoom.vacantSeats}
+                <p className="text-xs text-[#6B7280] mt-0.5">
+                  Capacity: {inspectorRoom.capacity} Seats • Occupied:{' '}
+                  <strong className="text-[#1A1A1A]">{inspectorRoom.occupiedSeats}</strong> • Vacant:{' '}
+                  <strong className="text-[#16A34A]">{inspectorRoom.vacantSeats}</strong>
                 </p>
               </div>
               <button
                 onClick={() => setInspectorRoom(null)}
-                className="p-1.5 rounded-lg text-slate-400 hover:text-slate-700 hover:bg-slate-200/50"
+                className="btn-interaction p-1.5 rounded-lg text-[#6B7280] hover:text-[#1A1A1A] hover:bg-black/5 cursor-pointer"
               >
                 <X className="w-5 h-5" />
               </button>
@@ -236,28 +287,28 @@ export default function RoomAllocationBoard({ rooms, onSelectRoom, isAdmin = fal
 
             {/* Modal Body */}
             <div className="p-6 overflow-y-auto space-y-4">
-              {/* Filter */}
+              {/* Search Filter */}
               <div className="relative">
-                <Search className="w-4 h-4 text-slate-400 absolute left-3 top-2.5" />
+                <Search className="w-4 h-4 text-[#9CA3AF] absolute left-3.5 top-3" />
                 <input
                   type="text"
-                  placeholder="Filter by Student ID or Collection ID..."
+                  placeholder="Search by Student ID (e.g. O230250) or Collection ID..."
                   value={seatSearch}
                   onChange={(e) => setSeatSearch(e.target.value)}
-                  className="w-full text-xs pl-9 pr-3 py-2 bg-slate-50 border border-slate-200 rounded-lg focus:outline-hidden focus:ring-1 focus:ring-blue-600"
+                  className="w-full text-xs pl-10 pr-3.5 py-2.5 bg-[#F9FAFB] border border-[#E5E7EB] rounded-xl focus:outline-hidden focus:ring-2 focus:ring-[#030213]/10 focus:border-[#030213] focus:bg-white"
                 />
               </div>
 
-              {/* Numbered Seats Grid */}
-              <div className="space-y-2">
-                <div className="flex items-center justify-between text-xs text-slate-500 font-medium">
-                  <span>Seats 1 to {inspectorRoom.capacity}</span>
+              {/* Numbered Seats Matrix */}
+              <div className="space-y-2.5">
+                <div className="flex items-center justify-between text-xs text-[#6B7280] font-medium">
+                  <span>Numbered Seats (1 to {inspectorRoom.capacity})</span>
                   <div className="flex items-center gap-3">
-                    <span className="flex items-center gap-1">
-                      <span className="w-3 h-3 bg-emerald-500 rounded-xs" /> Occupied
+                    <span className="flex items-center gap-1.5 text-xs font-semibold text-[#166534]">
+                      <span className="w-2.5 h-2.5 bg-[#16A34A] rounded-full" /> Occupied
                     </span>
-                    <span className="flex items-center gap-1">
-                      <span className="w-3 h-3 bg-slate-200 rounded-xs" /> Vacant
+                    <span className="flex items-center gap-1.5 text-xs font-semibold text-[#6B7280]">
+                      <span className="w-2.5 h-2.5 bg-[#E5E7EB] rounded-full" /> Vacant
                     </span>
                   </div>
                 </div>
@@ -275,21 +326,23 @@ export default function RoomAllocationBoard({ rooms, onSelectRoom, isAdmin = fal
                     return (
                       <div
                         key={seatNum}
-                        className={`p-2 rounded-lg border text-center transition-all ${
-                          !matchesSearch ? 'opacity-30' : ''
+                        className={`p-2 rounded-xl border text-center transition-all ${
+                          !matchesSearch ? 'opacity-25' : ''
                         } ${
                           isOccupied
-                            ? 'bg-emerald-50 border-emerald-300 text-emerald-900'
-                            : 'bg-slate-50 border-slate-200 text-slate-500'
+                            ? 'bg-[#DCFCE7] border-[#BBF7D0] text-[#14532D] shadow-2xs'
+                            : 'bg-[#F9FAFB] border-[#E5E7EB] text-[#9CA3AF]'
                         }`}
                       >
-                        <div className="text-[10px] font-mono font-bold">Seat #{seatNum}</div>
+                        <div className="text-[10px] font-mono font-bold text-[#6B7280]">
+                          #{seatNum}
+                        </div>
                         <div className="text-xs font-bold font-mono truncate mt-0.5">
                           {isOccupied ? laptop.studentId : 'Vacant'}
                         </div>
                         {isOccupied && (
-                          <div className="text-[9px] text-emerald-700 truncate font-mono">
-                            {laptop.batch} • {laptop.allocationStatus}
+                          <div className="text-[9px] text-[#15803D] truncate font-semibold mt-0.5">
+                            {laptop.batch}
                           </div>
                         )}
                       </div>
@@ -298,30 +351,30 @@ export default function RoomAllocationBoard({ rooms, onSelectRoom, isAdmin = fal
                 </div>
               </div>
 
-              {/* Detailed list if searched or loaded */}
+              {/* Details List */}
               {roomDetails && roomDetails.length > 0 && (
-                <div className="pt-4 border-t border-slate-200 space-y-2">
-                  <h5 className="font-semibold text-xs text-slate-700 uppercase tracking-wider">
-                    Assigned Laptop Details ({roomDetails.length})
+                <div className="pt-4 border-t border-[#E5E7EB] space-y-2">
+                  <h5 className="font-bold text-xs uppercase tracking-wider text-[#7A7772]">
+                    Allocated Students in {inspectorRoom.name} ({roomDetails.length})
                   </h5>
-                  <div className="divide-y divide-slate-100 max-h-48 overflow-y-auto border border-slate-200 rounded-lg bg-white">
+                  <div className="divide-y divide-[#E5E7EB] max-h-48 overflow-y-auto border border-[#E5E7EB] rounded-xl bg-white">
                     {roomDetails.map((item) => (
-                      <div key={item.id} className="p-2.5 text-xs flex justify-between items-center hover:bg-slate-50">
+                      <div key={item.id} className="p-3 text-xs flex justify-between items-center row-hover-effect">
                         <div>
                           <div className="flex items-center gap-2">
-                            <span className="font-bold text-slate-900 font-mono">{item.studentId}</span>
-                            <span className="text-[10px] bg-slate-100 text-slate-600 px-1.5 py-0.2 rounded font-mono">
+                            <span className="font-bold text-[#1A1A1A] font-mono text-sm">{item.studentId}</span>
+                            <span className="text-xs font-mono font-bold bg-[#DBEAFE] text-[#1E40AF] px-2 py-0.5 rounded-md">
                               Seat #{item.seatNumber}
                             </span>
-                            <span className="text-[10px] font-semibold text-blue-700 bg-blue-50 px-1.5 py-0.2 rounded">
+                            <span className="text-xs font-semibold text-[#4B5563] bg-[#F3F4F6] px-1.5 py-0.5 rounded">
                               {item.batch}
                             </span>
                           </div>
-                          <div className="text-[11px] text-slate-500 font-mono mt-0.5">{item.collectionId}</div>
+                          <div className="text-[11px] text-[#9CA3AF] font-mono mt-0.5">{item.collectionId}</div>
                         </div>
-                        <div className="text-right text-[11px] text-slate-400">
-                          <div>{item.collector?.name}</div>
-                          <div>{new Date(item.createdAt).toLocaleTimeString()}</div>
+                        <div className="text-right text-[11px] text-[#6B7280]">
+                          <div className="font-medium text-[#1A1A1A]">{item.collector?.name}</div>
+                          <div className="font-mono">{new Date(item.createdAt).toLocaleTimeString()}</div>
                         </div>
                       </div>
                     ))}
@@ -330,13 +383,13 @@ export default function RoomAllocationBoard({ rooms, onSelectRoom, isAdmin = fal
               )}
             </div>
 
-            <div className="px-6 py-3 border-t border-slate-200 bg-slate-50 rounded-b-2xl text-right">
+            <div className="px-6 py-4 border-t border-[#E5E7EB] bg-[#F4F2F0] rounded-b-[24px] flex justify-end">
               <button
                 type="button"
                 onClick={() => setInspectorRoom(null)}
-                className="px-4 py-2 text-xs font-semibold text-slate-700 bg-white border border-slate-300 rounded-lg hover:bg-slate-100"
+                className="btn-interaction px-4 py-2 text-xs font-semibold text-[#1A1A1A] bg-white border border-[#E5E7EB] rounded-xl hover:bg-[#F9FAFB] cursor-pointer shadow-2xs"
               >
-                Close
+                Close Seat Map
               </button>
             </div>
           </div>

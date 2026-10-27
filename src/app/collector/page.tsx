@@ -4,17 +4,17 @@ import React, { useState, useEffect, useCallback } from 'react';
 import { useRouter } from 'next/navigation';
 import Navbar from '@/components/Navbar';
 import RapidCollectionForm from '@/components/RapidCollectionForm';
+import { StandardCard } from '@/components/ui/StandardCard';
 import {
   Laptop,
   CheckCircle2,
   Clock,
   AlertCircle,
   RefreshCw,
-  LogOut,
   DoorOpen,
   ArrowRight,
-  ShieldCheck,
   Check,
+  LayoutGrid,
 } from 'lucide-react';
 
 export default function CollectorDashboard() {
@@ -32,7 +32,7 @@ export default function CollectorDashboard() {
   const [isClaiming, setIsClaiming] = useState(false);
   const [isCompleting, setIsCompleting] = useState(false);
 
-  // Fetch current user and session
+  // Authenticate collector
   const fetchUserData = useCallback(async () => {
     try {
       const res = await fetch('/api/auth/me');
@@ -49,7 +49,7 @@ export default function CollectorDashboard() {
     }
   }, [router]);
 
-  // Fetch active room claim and room occupancy
+  // Fetch active room claim and live metrics
   const fetchDashboardData = useCallback(async (currentUser?: any) => {
     setIsRefreshing(true);
     setActionError(null);
@@ -57,7 +57,7 @@ export default function CollectorDashboard() {
     try {
       const [roomsRes, historyRes, statsRes] = await Promise.all([
         fetch('/api/rooms'),
-        fetch('/api/collection/history?limit=10'),
+        fetch('/api/collection/history?limit=12'),
         fetch('/api/dashboard/stats'),
       ]);
 
@@ -66,7 +66,6 @@ export default function CollectorDashboard() {
         const u = currentUser || user;
 
         if (u) {
-          // Find this collector's active claim
           const myClaimedRoom = rooms.find(
             (r: any) => r.activeClaim && r.activeClaim.collectorId === u.id
           );
@@ -82,7 +81,6 @@ export default function CollectorDashboard() {
             setActiveClaim(null);
             setRoomOccupancy(null);
 
-            // Find next room they can claim in their permitted block
             const targetBlock = u.permittedDepartment === 'CSE' ? 'E' : 'F';
             const blockRooms = rooms
               .filter((r: any) => r.block === targetBlock)
@@ -118,15 +116,13 @@ export default function CollectorDashboard() {
       }
     });
 
-    // Auto-refresh polling every 5 seconds
     const interval = setInterval(() => {
       fetchDashboardData();
-    }, 5000);
+    }, 4000); // 4-second real-time polling
 
     return () => clearInterval(interval);
   }, [fetchUserData, fetchDashboardData]);
 
-  // Explicit authenticated action to claim the next room
   const handleClaimRoom = async () => {
     if (!nextClaimableRoom) return;
 
@@ -153,7 +149,6 @@ export default function CollectorDashboard() {
     }
   };
 
-  // Explicit authenticated action to complete the room
   const handleCompleteRoom = async () => {
     if (!activeClaim) return;
 
@@ -182,10 +177,12 @@ export default function CollectorDashboard() {
 
   if (isLoading && !user) {
     return (
-      <div className="min-h-screen bg-slate-50 flex items-center justify-center">
-        <div className="text-center space-y-2">
-          <RefreshCw className="w-6 h-6 animate-spin text-blue-900 mx-auto" />
-          <p className="text-xs font-semibold text-slate-500">Loading collector station...</p>
+      <div className="min-h-screen bg-[#F7F8FA] flex items-center justify-center">
+        <div className="text-center space-y-3">
+          <RefreshCw className="w-8 h-8 animate-spin text-[#030213] mx-auto" />
+          <p className="text-xs font-semibold text-[#6B7280]">
+            Loading collector station...
+          </p>
         </div>
       </div>
     );
@@ -193,9 +190,10 @@ export default function CollectorDashboard() {
 
   const isFull = roomOccupancy ? roomOccupancy.occupied >= roomOccupancy.capacity : false;
   const nextSeatNumber = roomOccupancy ? roomOccupancy.occupied + 1 : 1;
+  const isCSE = user?.permittedDepartment === 'CSE';
 
   return (
-    <div className="min-h-screen bg-slate-50 flex flex-col">
+    <div className="min-h-screen bg-[#F7F8FA] flex flex-col font-sans">
       <Navbar
         user={user}
         onRefresh={fetchDashboardData}
@@ -206,98 +204,119 @@ export default function CollectorDashboard() {
       <main className="flex-1 max-w-7xl w-full mx-auto px-4 sm:px-6 lg:px-8 py-6 space-y-6">
         {/* Error notification */}
         {actionError && (
-          <div className="bg-red-50 border border-red-200 text-red-800 text-xs p-3.5 rounded-xl flex items-start gap-2.5">
-            <AlertCircle className="w-4 h-4 text-red-600 shrink-0 mt-0.5" />
+          <div className="bg-red-50 border border-red-200 text-red-800 text-xs p-4 rounded-xl flex items-start gap-3 shadow-2xs">
+            <AlertCircle className="w-5 h-5 text-red-600 shrink-0 mt-0.5" />
             <div className="font-semibold">{actionError}</div>
           </div>
         )}
 
-        {/* Room Claim & Assignment Card */}
-        <div className="bg-white rounded-xl shadow-xs border border-slate-200 p-5">
-          <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4">
+        {/* Station Overview & Claim Cockpit in Ornate StandardCard */}
+        <StandardCard
+          header={
+            <div className="flex items-center justify-between">
+              <span className="text-[11px] font-bold text-[#7A7772] uppercase tracking-wider">
+                Station Control & Claim Management
+              </span>
+              <span
+                className={`text-[10px] font-bold px-2 py-0.5 rounded-md border ${
+                  isCSE
+                    ? 'bg-[#DBEAFE] text-[#1E40AF] border-[#BFDBFE]'
+                    : 'bg-[#EDE9FE] text-[#5B21B6] border-[#DDD6FE]'
+                }`}
+              >
+                {user?.permittedDepartment} Department Station • {isCSE ? 'E Block Queue' : 'F Block Queue'}
+              </span>
+            </div>
+          }
+        >
+          <div className="flex flex-col md:flex-row justify-between items-start md:items-center gap-4">
             <div>
-              <div className="flex items-center gap-2">
-                <span className="text-xs font-bold uppercase tracking-wider text-slate-500">
-                  {user?.permittedDepartment} Department Station
-                </span>
-                <span className="text-xs bg-slate-100 text-slate-700 px-2 py-0.5 rounded font-mono font-bold">
-                  {user?.permittedDepartment === 'CSE' ? 'Primary: E Block' : 'Primary: F Block'}
-                </span>
-              </div>
-
               {activeClaim ? (
-                <div className="mt-1 flex items-baseline gap-3">
-                  <h2 className="text-2xl font-extrabold text-slate-900 tracking-tight">
-                    Room {activeClaim.name}
-                  </h2>
-                  <span className="text-xs font-bold text-blue-800 bg-blue-50 border border-blue-200 px-2.5 py-0.5 rounded-full">
-                    Seat #{roomOccupancy?.occupied || 0} of {roomOccupancy?.capacity} filled
-                  </span>
+                <div>
+                  <div className="flex flex-wrap items-baseline gap-2.5">
+                    <h1 className="text-2xl sm:text-3xl font-bold text-[#1A1A1A] tracking-tight">
+                      Room {activeClaim.name}
+                    </h1>
+                    <span className="text-xs font-semibold text-[#1E40AF] bg-[#DBEAFE] px-2.5 py-0.5 rounded-md">
+                      {roomOccupancy?.occupied || 0} of {roomOccupancy?.capacity} Seats Occupied
+                    </span>
+                  </div>
+                  <p className="text-xs text-[#6B7280] mt-1">
+                    Order #{activeClaim.roomOrder} in sequential room queue. Currently reserved for this station.
+                  </p>
                 </div>
               ) : (
-                <div className="mt-1">
-                  <h2 className="text-xl font-bold text-slate-900">No Room Currently Claimed</h2>
-                  <p className="text-xs text-slate-500 mt-0.5">
-                    Opening the dashboard does not reserve a room. You must explicitly claim the next available room in sequence.
+                <div>
+                  <h1 className="text-xl sm:text-2xl font-bold text-[#1A1A1A] tracking-tight">
+                    No Room Currently Claimed
+                  </h1>
+                  <p className="text-xs text-[#6B7280] mt-1 max-w-xl">
+                    Sequential room allocation requires claiming the next available room in your department’s queue before recording laptops.
                   </p>
                 </div>
               )}
             </div>
 
-            {/* Actions: Claim or Complete */}
+            {/* Action Buttons: Claim or Complete */}
             <div>
               {activeClaim ? (
                 <button
                   type="button"
                   onClick={handleCompleteRoom}
                   disabled={isCompleting}
-                  className={`px-4 py-2 text-xs font-bold rounded-lg border transition-all flex items-center gap-2 cursor-pointer ${
+                  className={`btn-interaction px-4 py-2 text-xs font-semibold rounded-xl border flex items-center gap-2 cursor-pointer shadow-2xs ${
                     isFull
-                      ? 'bg-emerald-600 text-white hover:bg-emerald-700 border-emerald-600 shadow-xs'
-                      : 'bg-white text-slate-700 border-slate-300 hover:bg-slate-100'
+                      ? 'bg-emerald-600 text-white hover:bg-emerald-700 border-emerald-600'
+                      : 'bg-white text-[#1A1A1A] border-[#E5E7EB] hover:bg-[#F9FAFB]'
                   }`}
                 >
                   <Check className="w-4 h-4" />
-                  <span>{isCompleting ? 'Completing...' : isFull ? 'Room Full — Mark Complete' : 'Finish & Complete Room'}</span>
+                  <span>
+                    {isCompleting
+                      ? 'Completing Room...'
+                      : isFull
+                      ? 'Room Full • Mark Complete'
+                      : 'Finish & Complete Room'}
+                  </span>
                 </button>
               ) : nextClaimableRoom ? (
                 <button
                   type="button"
                   onClick={handleClaimRoom}
                   disabled={isClaiming || (activeSession && !activeSession.isActive)}
-                  className="px-5 py-2.5 text-xs font-bold text-white bg-blue-900 hover:bg-blue-800 rounded-lg shadow-sm transition-all flex items-center gap-2 cursor-pointer disabled:opacity-50"
+                  className="btn-interaction px-5 py-2.5 text-xs sm:text-sm font-semibold text-white bg-[#030213] hover:bg-[#030213]/90 rounded-xl shadow-sm flex items-center gap-2 cursor-pointer disabled:opacity-50"
                 >
-                  <DoorOpen className="w-4 h-4" />
+                  <DoorOpen className="w-4 h-4 text-white" />
                   <span>
                     {isClaiming
-                      ? 'Claiming...'
-                      : `Claim Next Room: ${nextClaimableRoom.name} (${nextClaimableRoom.capacity} Seats)`}
+                      ? 'Claiming Room...'
+                      : `Claim Next: ${nextClaimableRoom.name} (${nextClaimableRoom.capacity} Seats)`}
                   </span>
-                  <ArrowRight className="w-3.5 h-3.5" />
+                  <ArrowRight className="w-4 h-4" />
                 </button>
               ) : (
-                <div className="text-xs font-semibold text-amber-700 bg-amber-50 border border-amber-200 px-3 py-2 rounded-lg">
+                <div className="text-xs font-semibold text-[#92400E] bg-[#FEF3C7] border border-[#FDE68A] px-3.5 py-2 rounded-xl">
                   All rooms in your primary block are currently full or claimed.
                 </div>
               )}
             </div>
           </div>
 
-          {/* Progress bar if room is active */}
+          {/* Visual occupancy bar if claimed */}
           {activeClaim && roomOccupancy && (
-            <div className="mt-4 pt-4 border-t border-slate-100">
+            <div className="mt-4 pt-3.5 border-t border-[#E5E7EB]">
               <div className="flex justify-between items-center text-xs mb-1.5">
-                <span className="font-semibold text-slate-700">
-                  Sequential Allocation Progress: <strong className="font-mono">{roomOccupancy.occupied}</strong> /{' '}
+                <span className="font-medium text-[#4B5563]">
+                  Sequential Progress: <strong className="font-mono text-[#1A1A1A]">{roomOccupancy.occupied}</strong> /{' '}
                   {roomOccupancy.capacity} Seats
                 </span>
-                <span className="font-mono text-slate-600 font-bold">
+                <span className="font-mono text-[#6B7280] font-bold text-xs">
                   {Math.round((roomOccupancy.occupied / roomOccupancy.capacity) * 100)}%
                 </span>
               </div>
-              <div className="w-full bg-slate-100 rounded-full h-2.5 overflow-hidden border border-slate-200">
+              <div className="w-full bg-[#F3F4F6] rounded-full h-2 overflow-hidden border border-[#E5E7EB]">
                 <div
-                  className="h-full bg-blue-600 rounded-full transition-all duration-300"
+                  className="h-full bg-[#030213] rounded-full transition-all duration-300"
                   style={{
                     width: `${Math.min((roomOccupancy.occupied / roomOccupancy.capacity) * 100, 100)}%`,
                   }}
@@ -305,83 +324,122 @@ export default function CollectorDashboard() {
               </div>
             </div>
           )}
-        </div>
+        </StandardCard>
 
-        {/* Rapid Collection Form Component */}
-        <RapidCollectionForm
-          collectorDepartment={user?.permittedDepartment || 'CSE'}
-          activeRoomName={activeClaim?.name || null}
-          nextSeatNumber={isFull ? null : nextSeatNumber}
-          isPrimaryBlockFull={!activeClaim && !nextClaimableRoom}
-          onSuccessfulSubmission={() => {
-            fetchDashboardData();
-          }}
-        />
-
-        {/* Collector Recent Submissions */}
-        <div className="bg-white rounded-xl shadow-xs border border-slate-200 overflow-hidden">
-          <div className="px-5 py-4 border-b border-slate-200 flex justify-between items-center bg-slate-50">
-            <div>
-              <h3 className="font-bold text-slate-900 text-sm">Your Recent Collection Submissions</h3>
-              <p className="text-xs text-slate-500">Live transaction history for this station</p>
-            </div>
-            <span className="text-xs font-mono font-semibold text-slate-500">
-              Showing {recentSubmissions.length} recent
-            </span>
+        {/* 2-Column Responsive Workspace */}
+        <div className="grid grid-cols-1 lg:grid-cols-12 gap-6 items-start">
+          {/* Left Column: Rapid Collection Form */}
+          <div className="lg:col-span-7 space-y-6">
+            <RapidCollectionForm
+              collectorDepartment={user?.permittedDepartment || 'CSE'}
+              activeRoomName={activeClaim?.name || null}
+              nextSeatNumber={isFull ? null : nextSeatNumber}
+              isPrimaryBlockFull={!activeClaim && !nextClaimableRoom}
+              onSuccessfulSubmission={() => {
+                fetchDashboardData();
+              }}
+            />
           </div>
 
-          {recentSubmissions.length === 0 ? (
-            <div className="text-center py-10 text-xs text-slate-500">
-              No laptops recorded yet during this shift.
-            </div>
-          ) : (
-            <div className="overflow-x-auto">
-              <table className="w-full text-left text-xs">
-                <thead className="bg-slate-50 text-slate-600 uppercase font-semibold text-[10px] tracking-wider border-b border-slate-200">
-                  <tr>
-                    <th className="py-2.5 px-4">Collection ID</th>
-                    <th className="py-2.5 px-4">Student ID</th>
-                    <th className="py-2.5 px-4">Batch</th>
-                    <th className="py-2.5 px-4">Allocation</th>
-                    <th className="py-2.5 px-4">Seat #</th>
-                    <th className="py-2.5 px-4">Submitter</th>
-                    <th className="py-2.5 px-4">Time</th>
-                  </tr>
-                </thead>
-                <tbody className="divide-y divide-slate-100">
+          {/* Right Column: Live Room Seat Grid & Recent Submissions */}
+          <div className="lg:col-span-5 space-y-6">
+            {/* Live Room Seat Grid */}
+            {activeClaim && roomOccupancy && (
+              <StandardCard
+                header={
+                  <div className="flex justify-between items-center">
+                    <div className="flex items-center gap-2">
+                      <LayoutGrid className="w-4 h-4 text-[#030213]" />
+                      <h3 className="font-bold text-[#1A1A1A] text-xs sm:text-sm">
+                        {activeClaim.name} Live Seat Layout
+                      </h3>
+                    </div>
+                    <span className="text-[11px] font-mono font-bold text-[#6B7280]">
+                      {roomOccupancy.occupied}/{roomOccupancy.capacity} Filled
+                    </span>
+                  </div>
+                }
+              >
+                <div className="grid grid-cols-7 gap-1.5">
+                  {Array.from({ length: roomOccupancy.capacity }, (_, i) => i + 1).map((seat) => {
+                    const isOccupied = seat <= roomOccupancy.occupied;
+                    const isNext = seat === roomOccupancy.occupied + 1;
+
+                    return (
+                      <div
+                        key={seat}
+                        className={`py-2 text-center rounded-lg text-xs font-mono font-bold transition-all ${
+                          isOccupied
+                            ? 'bg-[#DCFCE7] text-[#14532D] border border-[#BBF7D0]'
+                            : isNext
+                            ? 'bg-[#DBEAFE] text-[#1E40AF] border-2 border-blue-600 animate-pulse'
+                            : 'bg-[#F9FAFB] text-[#9CA3AF] border border-[#E5E7EB]'
+                        }`}
+                        title={
+                          isOccupied
+                            ? `Seat #${seat} Occupied`
+                            : isNext
+                            ? `Seat #${seat} Next in Line`
+                            : `Seat #${seat} Vacant`
+                        }
+                      >
+                        #{seat}
+                      </div>
+                    );
+                  })}
+                </div>
+              </StandardCard>
+            )}
+
+            {/* Recent Submissions Feed */}
+            <StandardCard
+              header={
+                <div className="flex justify-between items-center">
+                  <h3 className="font-bold text-[#1A1A1A] text-xs sm:text-sm">
+                    Recent Submissions
+                  </h3>
+                  <span className="text-[10px] font-bold text-[#7A7772] uppercase tracking-wider">
+                    Station Activity
+                  </span>
+                </div>
+              }
+            >
+              {recentSubmissions.length === 0 ? (
+                <div className="text-center py-8 text-xs text-[#6B7280]">
+                  No laptops recorded yet during this shift.
+                </div>
+              ) : (
+                <div className="divide-y divide-[#E5E7EB] max-h-80 overflow-y-auto">
                   {recentSubmissions.map((record) => (
-                    <tr key={record.id} className="hover:bg-slate-50 transition-colors">
-                      <td className="py-2.5 px-4 font-mono font-bold text-slate-900">{record.collectionId}</td>
-                      <td className="py-2.5 px-4 font-mono font-bold text-blue-900">{record.studentId}</td>
-                      <td className="py-2.5 px-4 font-semibold text-slate-700">{record.batch}</td>
-                      <td className="py-2.5 px-4">
-                        <span
-                          className={`inline-flex px-2 py-0.5 rounded text-[10px] font-bold ${
-                            record.allocationStatus === 'PRIMARY'
-                              ? 'bg-blue-50 text-blue-700 border border-blue-200'
-                              : record.allocationStatus === 'CROSS_BLOCK'
-                              ? 'bg-purple-50 text-purple-700 border border-purple-200'
-                              : 'bg-amber-50 text-amber-700 border border-amber-200'
-                          }`}
-                        >
-                          {record.room?.name ? `${record.room.name} (${record.room.block})` : 'Backup'}
-                        </span>
-                      </td>
-                      <td className="py-2.5 px-4 font-mono font-bold text-slate-900">
-                        {record.seatNumber ? `Seat #${record.seatNumber}` : '—'}
-                      </td>
-                      <td className="py-2.5 px-4 text-slate-600">
-                        {record.isSubmitterPresent ? 'Self' : `Proxy (${record.submitterStudentId})`}
-                      </td>
-                      <td className="py-2.5 px-4 text-slate-400 font-mono text-[11px]">
+                    <div
+                      key={record.id}
+                      className="py-3 px-1 flex justify-between items-center text-xs row-hover-effect rounded-lg"
+                    >
+                      <div>
+                        <div className="flex items-center gap-2">
+                          <strong className="font-mono font-bold text-[#1A1A1A] text-sm">
+                            {record.studentId}
+                          </strong>
+                          <span className="text-[10px] font-semibold text-[#1E40AF] bg-[#DBEAFE] px-1.5 py-0.2 rounded font-mono">
+                            {record.batch}
+                          </span>
+                          <span className="text-[10px] font-bold font-mono text-[#15803D] bg-[#DCFCE7] px-1.5 py-0.2 rounded">
+                            {record.room?.name ? `${record.room.name} #${record.seatNumber}` : 'Backup'}
+                          </span>
+                        </div>
+                        <div className="text-[11px] text-[#9CA3AF] font-mono mt-0.5">
+                          {record.collectionId}
+                        </div>
+                      </div>
+                      <span className="text-[10px] text-[#9CA3AF] font-mono">
                         {new Date(record.createdAt).toLocaleTimeString()}
-                      </td>
-                    </tr>
+                      </span>
+                    </div>
                   ))}
-                </tbody>
-              </table>
-            </div>
-          )}
+                </div>
+              )}
+            </StandardCard>
+          </div>
         </div>
       </main>
     </div>

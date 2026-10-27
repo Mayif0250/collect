@@ -7,18 +7,28 @@ const globalForPrisma = globalThis as unknown as {
   pgPool: Pool | undefined;
 };
 
-const connectionString = process.env.DATABASE_URL || 'postgresql://postgres:postgres@127.0.0.1:5433/laptop_collect?sslmode=disable';
+const connectionString =
+  process.env.DATABASE_URL ||
+  'postgresql://postgres:postgres@127.0.0.1:5433/laptop_collect?sslmode=disable';
 
-const isLocal = connectionString.includes('127.0.0.1') || connectionString.includes('localhost');
+const isLocal =
+  connectionString.includes('127.0.0.1') ||
+  connectionString.includes('localhost') ||
+  connectionString.includes('sslmode=disable');
 
 const pool =
   globalForPrisma.pgPool ??
   new Pool({
     connectionString,
-    ssl: !isLocal && process.env.NODE_ENV === 'production' ? { rejectUnauthorized: false } : false,
-    max: 15,
-    idleTimeoutMillis: 30000,
+    ssl: !isLocal ? { rejectUnauthorized: false } : false,
+    max: 10,
+    idleTimeoutMillis: 20000,
+    connectionTimeoutMillis: 10000,
   });
+
+pool.on('error', (err) => {
+  console.warn('PostgreSQL client pool error (auto-reconnecting):', err.message);
+});
 
 const adapter = new PrismaPg(pool);
 
@@ -26,7 +36,7 @@ export const prisma =
   globalForPrisma.prisma ??
   new PrismaClient({
     adapter,
-    log: process.env.NODE_ENV === 'development' ? ['warn', 'error'] : ['error'],
+    log: ['warn', 'error'],
   });
 
 if (process.env.NODE_ENV !== 'production') {

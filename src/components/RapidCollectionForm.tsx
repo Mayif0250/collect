@@ -1,7 +1,16 @@
 'use client';
 
 import React, { useState, useRef, useEffect } from 'react';
-import { CheckCircle2, AlertTriangle, Send, RefreshCw, UserCheck, UserX, ShieldAlert } from 'lucide-react';
+import {
+  CheckCircle2,
+  AlertTriangle,
+  Send,
+  RefreshCw,
+  UserCheck,
+  UserX,
+  ShieldAlert,
+} from 'lucide-react';
+import { StandardCard } from '@/components/ui/StandardCard';
 
 interface RapidCollectionFormProps {
   collectorDepartment: 'CSE' | 'ECE';
@@ -46,7 +55,7 @@ export default function RapidCollectionForm({
     overrideReason: string;
   } | null>(null);
 
-  // Keep studentId input focused for rapid repeated entries
+  // Focus studentId input on mount and after successful save
   useEffect(() => {
     studentIdInputRef.current?.focus();
   }, [lastSaved]);
@@ -56,25 +65,24 @@ export default function RapidCollectionForm({
 
     const normalizedStudentId = studentId.trim().toUpperCase();
     if (!normalizedStudentId) {
-      setErrorMessage('Please enter a Student ID.');
+      setErrorMessage('Please enter a Student ID (e.g. O230250).');
       studentIdInputRef.current?.focus();
       return;
     }
 
     if (!isSubmitterPresent && !submitterStudentId.trim()) {
-      setErrorMessage('Please enter the physical submitter student ID.');
+      setErrorMessage('Please enter the Physical Submitter Student ID.');
       return;
     }
 
     if (isOverride && (!duplicateWarning?.overrideReason || duplicateWarning.overrideReason.trim().length < 3)) {
-      setErrorMessage('Please provide a legitimate reason for overriding the duplicate student ID.');
+      setErrorMessage('Please provide an administrative reason for overriding the duplicate warning.');
       return;
     }
 
     setIsSubmitting(true);
     setErrorMessage(null);
 
-    // Client-side generated idempotency key for safe retries
     const idempotencyKey = `req-${Date.now()}-${Math.random().toString(36).slice(2, 9)}`;
 
     try {
@@ -101,7 +109,6 @@ export default function RapidCollectionForm({
       const data = await res.json();
 
       if (res.status === 409 && data.duplicateWarning) {
-        // Trigger duplicate resolution workflow
         setDuplicateWarning({
           show: true,
           existingRecord: data.existingRecord,
@@ -115,7 +122,7 @@ export default function RapidCollectionForm({
         throw new Error(data.error || 'Failed to register laptop');
       }
 
-      // Successful registration!
+      // Successful save
       setLastSaved({
         collectionId: data.record.collectionId,
         studentId: data.record.studentId,
@@ -125,17 +132,15 @@ export default function RapidCollectionForm({
         timestamp: new Date(),
       });
 
-      // Clear fields while PRESERVING batch selection
+      // Reset form while keeping batch choice
       setStudentId('');
       setStudentName('');
       setSubmitterStudentId('');
       setIsSubmitterPresent(true);
       setDuplicateWarning(null);
 
-      // Notify parent dashboard to update live stats
       onSuccessfulSubmission(data.record);
 
-      // Re-focus immediately for next student
       setTimeout(() => {
         studentIdInputRef.current?.focus();
       }, 50);
@@ -147,100 +152,124 @@ export default function RapidCollectionForm({
   };
 
   return (
-    <div className="bg-white rounded-xl shadow-xs border border-slate-200 overflow-hidden">
-      {/* Header */}
-      <div className="bg-slate-900 text-white px-5 py-4 flex flex-wrap justify-between items-center gap-2">
-        <div>
-          <h2 className="font-semibold text-base sm:text-lg flex items-center gap-2">
-            <span>Rapid Collection Entry</span>
-            <span className="text-xs bg-blue-600 text-white font-mono px-2 py-0.5 rounded">
-              {collectorDepartment} Branch
+    <StandardCard
+      header={
+        <div className="flex flex-wrap items-center justify-between gap-2">
+          <div className="flex items-center gap-2.5">
+            <span
+              className={`text-[10px] font-bold uppercase tracking-wider px-2 py-0.5 rounded-md border ${
+                collectorDepartment === 'CSE'
+                  ? 'bg-[#DBEAFE] text-[#1E40AF] border-[#BFDBFE]'
+                  : 'bg-[#EDE9FE] text-[#5B21B6] border-[#DDD6FE]'
+              }`}
+            >
+              {collectorDepartment} Station
             </span>
-          </h2>
-          <p className="text-xs text-slate-300">
-            {isPrimaryBlockFull
-              ? 'Primary Block Full — Direct recording to Backup Inventory'
-              : activeRoomName
-              ? `Allocating sequentially to ${activeRoomName} (Next: Seat #${nextSeatNumber ?? 1})`
-              : 'Claim a room to start sequential seat allocations'}
-          </p>
-        </div>
-        <div className="text-right text-xs text-slate-300 font-mono">
-          Press <kbd className="bg-slate-800 text-slate-200 px-1.5 py-0.5 rounded border border-slate-700">Enter</kbd> to submit
-        </div>
-      </div>
+            <span className="text-xs font-bold text-[#7A7772] uppercase tracking-wider">
+              Rapid Collection Entry
+            </span>
+          </div>
 
-      <div className="p-5 space-y-4">
-        {/* Prominent Last Saved Confirmation Banner */}
+          {activeRoomName && nextSeatNumber && (
+            <div className="inline-flex items-center gap-1.5 px-2.5 py-0.5 rounded-full bg-[#DCFCE7] text-[#15803D] border border-[#BBF7D0] text-xs font-semibold font-mono">
+              <span className="w-1.5 h-1.5 rounded-full bg-[#16A34A] animate-pulse" />
+              <span>Target: Room {activeRoomName} • Seat #{nextSeatNumber}</span>
+            </div>
+          )}
+        </div>
+      }
+    >
+      <div className="space-y-4">
+        {/* Subtitle instructions */}
+        <p className="text-xs text-[#6B7280]">
+          {isPrimaryBlockFull ? (
+            <span className="text-[#B45309] font-medium">Primary Block at 100% Capacity → Saving to Backup Inventory</span>
+          ) : activeRoomName ? (
+            <span>
+              Laptops are sequentially allocated in room{' '}
+              <strong className="text-[#1A1A1A] font-semibold">{activeRoomName}</strong> at seat{' '}
+              <strong className="text-[#16A34A] font-semibold">#{nextSeatNumber ?? 1}</strong>.
+            </span>
+          ) : (
+            <span className="text-[#9CA3AF]">
+              Claim a room from the queue above to activate sequential seat allocation.
+            </span>
+          )}
+        </p>
+
+        {/* Freshly Accepted Receipt Banner */}
         {lastSaved && (
-          <div className="bg-emerald-50 border border-emerald-200 rounded-lg p-3.5 flex items-start justify-between animate-in fade-in duration-200">
+          <div className="bg-[#DCFCE7] border border-[#BBF7D0] rounded-xl p-3.5 flex items-start justify-between animate-in fade-in slide-in-from-top-1 duration-200">
             <div className="flex items-start gap-3">
-              <CheckCircle2 className="w-5 h-5 text-emerald-600 shrink-0 mt-0.5" />
-              <div>
+              <div className="w-7 h-7 rounded-lg bg-white text-[#16A34A] flex items-center justify-center shrink-0 mt-0.5 shadow-2xs">
+                <CheckCircle2 className="w-4 h-4" />
+              </div>
+              <div className="space-y-0.5">
                 <div className="flex items-center gap-2 flex-wrap">
-                  <span className="text-xs font-bold text-emerald-900 uppercase">Successfully Accepted:</span>
-                  <span className="text-sm font-bold text-slate-900 font-mono">{lastSaved.studentId}</span>
-                  <span className="text-xs font-mono font-bold bg-white text-emerald-800 border border-emerald-300 px-2 py-0.5 rounded shadow-2xs">
+                  <span className="text-[11px] font-bold uppercase tracking-wider text-[#14532D]">
+                    Laptop Registered
+                  </span>
+                  <span className="text-xs font-mono font-bold text-[#15803D] bg-white px-2 py-0.5 rounded-md border border-[#BBF7D0]">
                     {lastSaved.collectionId}
                   </span>
                 </div>
-                <div className="text-xs text-emerald-700 mt-1 flex items-center gap-2">
-                  <span>
-                    Location:{' '}
-                    <strong>
-                      {lastSaved.allocationStatus === 'BACKUP'
-                        ? 'Backup Inventory'
-                        : `${lastSaved.roomName} — Seat #${lastSaved.seatNumber}`}
-                    </strong>
-                  </span>
-                  <span>•</span>
-                  <span>Status: {lastSaved.allocationStatus}</span>
+                <div className="text-xs text-[#166534]">
+                  Student: <strong className="font-mono text-[#14532D]">{lastSaved.studentId}</strong> • Assigned:{' '}
+                  <strong className="text-[#14532D]">
+                    {lastSaved.allocationStatus === 'BACKUP'
+                      ? 'Backup Storage'
+                      : `${lastSaved.roomName} (Seat #${lastSaved.seatNumber})`}
+                  </strong>
                 </div>
               </div>
             </div>
             <button
               onClick={() => setLastSaved(null)}
-              className="text-xs text-slate-400 hover:text-slate-600"
+              className="text-xs text-[#166534] hover:text-[#14532D] p-1 font-bold cursor-pointer"
             >
               ✕
             </button>
           </div>
         )}
 
-        {/* Error message */}
+        {/* Error notification */}
         {errorMessage && (
-          <div className="bg-red-50 border border-red-200 text-red-800 text-xs rounded-lg p-3 flex items-start gap-2">
+          <div className="bg-red-50 border border-red-200 text-red-800 text-xs rounded-xl p-3 flex items-start gap-2.5">
             <AlertTriangle className="w-4 h-4 text-red-600 shrink-0 mt-0.5" />
-            <div className="flex-1 font-medium">{errorMessage}</div>
-            <button onClick={() => setErrorMessage(null)} className="text-red-400 hover:text-red-700 font-bold">
+            <div className="flex-1 font-semibold">{errorMessage}</div>
+            <button
+              onClick={() => setErrorMessage(null)}
+              className="text-red-400 hover:text-red-700 font-bold cursor-pointer"
+            >
               ✕
             </button>
           </div>
         )}
 
-        {/* Duplicate Student Verification Warning Box */}
+        {/* Duplicate Warning Box */}
         {duplicateWarning?.show && (
-          <div className="bg-amber-50 border-2 border-amber-400 rounded-xl p-4 space-y-3">
+          <div className="bg-[#FEF3C7] border border-[#FDE68A] rounded-xl p-4 space-y-3 animate-in fade-in">
             <div className="flex items-start gap-3">
-              <ShieldAlert className="w-6 h-6 text-amber-600 shrink-0 mt-0.5" />
+              <ShieldAlert className="w-5 h-5 text-[#D97706] shrink-0 mt-0.5" />
               <div>
-                <h4 className="text-sm font-bold text-amber-900">Verification Warning: Duplicate Student ID</h4>
-                <p className="text-xs text-amber-800 mt-0.5">
-                  Student ID <strong className="font-mono">{studentId.trim().toUpperCase()}</strong> was already registered in the system under Collection ID{' '}
+                <h4 className="text-sm font-bold text-[#92400E]">Student ID Already Registered</h4>
+                <p className="text-xs text-[#B45309] mt-0.5">
+                  Student <strong className="font-mono font-bold">{studentId.trim().toUpperCase()}</strong> was previously registered under Collection ID{' '}
                   <strong className="font-mono">{duplicateWarning.existingRecord?.collectionId}</strong>.
                 </p>
                 {duplicateWarning.existingRecord && (
-                  <div className="mt-2 text-xs bg-white/75 p-2 rounded border border-amber-200 text-slate-700">
-                    Location: {duplicateWarning.existingRecord.roomName || 'Backup'} (Seat #{duplicateWarning.existingRecord.seatNumber || '—'}) • Registered on:{' '}
-                    {new Date(duplicateWarning.existingRecord.createdAt).toLocaleTimeString()}
+                  <div className="mt-2 text-xs bg-white p-2.5 rounded-lg border border-[#FDE68A] text-[#1A1A1A] flex flex-wrap gap-x-4 gap-y-1">
+                    <span>Room: <strong>{duplicateWarning.existingRecord.roomName || 'Backup'}</strong></span>
+                    <span>Seat: <strong>#{duplicateWarning.existingRecord.seatNumber || '—'}</strong></span>
+                    <span>Time: <strong>{new Date(duplicateWarning.existingRecord.createdAt).toLocaleTimeString()}</strong></span>
                   </div>
                 )}
               </div>
             </div>
 
-            <div className="pt-2 border-t border-amber-200">
-              <label className="block text-xs font-semibold text-amber-900 mb-1">
-                Audited Reason for Exception Override:
+            <div className="pt-2 border-t border-[#FDE68A]">
+              <label className="block text-[11px] font-bold uppercase tracking-wider text-[#92400E] mb-1">
+                Audited Exception Reason:
               </label>
               <input
                 type="text"
@@ -248,8 +277,8 @@ export default function RapidCollectionForm({
                 onChange={(e) =>
                   setDuplicateWarning({ ...duplicateWarning, overrideReason: e.target.value })
                 }
-                placeholder="e.g., Replacement laptop verified with HOD approval"
-                className="w-full text-xs p-2 bg-white border border-amber-300 rounded focus:ring-2 focus:ring-amber-500 focus:outline-hidden"
+                placeholder="e.g. Authorized duplicate replacement with HOD approval"
+                className="w-full text-xs p-2.5 bg-white border border-[#FDE68A] rounded-xl focus:ring-2 focus:ring-[#D97706]/20 focus:outline-hidden"
               />
             </div>
 
@@ -257,15 +286,15 @@ export default function RapidCollectionForm({
               <button
                 type="button"
                 onClick={() => setDuplicateWarning(null)}
-                className="px-3 py-1.5 text-xs font-medium text-slate-700 bg-white border border-slate-300 rounded hover:bg-slate-50"
+                className="btn-interaction px-3.5 py-1.5 text-xs font-semibold text-[#1A1A1A] bg-white border border-[#E5E7EB] rounded-xl hover:bg-[#F9FAFB] cursor-pointer"
               >
-                Cancel / Re-check
+                Cancel / Verify ID
               </button>
               <button
                 type="button"
                 onClick={() => handleSubmit(undefined, true)}
                 disabled={isSubmitting || !duplicateWarning.overrideReason.trim()}
-                className="px-4 py-1.5 text-xs font-semibold text-white bg-amber-600 hover:bg-amber-700 rounded transition-colors disabled:opacity-50"
+                className="btn-interaction px-4 py-1.5 text-xs font-bold text-white bg-[#D97706] hover:bg-[#B45309] rounded-xl transition-colors disabled:opacity-50 cursor-pointer shadow-2xs"
               >
                 {isSubmitting ? 'Overriding...' : 'Confirm Audited Exception'}
               </button>
@@ -273,16 +302,19 @@ export default function RapidCollectionForm({
           </div>
         )}
 
-        {/* Main Entry Form */}
+        {/* Form Inputs */}
         <form onSubmit={(e) => handleSubmit(e, false)} className="space-y-4">
-          <div className="grid grid-cols-1 md:grid-cols-12 gap-3">
-            {/* Student ID (Primary Focus) */}
+          <div className="grid grid-cols-1 md:grid-cols-12 gap-3.5">
+            {/* Student ID */}
             <div className="md:col-span-5">
-              <label htmlFor="studentIdInput" className="block text-xs font-bold text-slate-700 uppercase tracking-wider mb-1">
+              <label
+                htmlFor="studentId"
+                className="block text-xs font-semibold text-[#4B5563] uppercase tracking-wider mb-1.5"
+              >
                 Student ID <span className="text-red-500">*</span>
               </label>
               <input
-                id="studentIdInput"
+                id="studentId"
                 ref={studentIdInputRef}
                 type="text"
                 required
@@ -290,23 +322,23 @@ export default function RapidCollectionForm({
                 onChange={(e) => setStudentId(e.target.value.toUpperCase())}
                 placeholder="e.g. O230250"
                 autoComplete="off"
-                className="w-full text-base sm:text-lg font-mono font-bold px-3.5 py-2.5 rounded-lg border-2 border-slate-300 focus:border-blue-600 focus:ring-2 focus:ring-blue-100 transition-all uppercase placeholder:normal-case placeholder:font-sans placeholder:font-normal placeholder:text-slate-400"
+                className="w-full text-lg sm:text-xl font-mono font-bold px-3.5 py-2.5 rounded-xl border border-[#E5E7EB] bg-[#F9FAFB] focus:bg-white focus:ring-2 focus:ring-[#030213]/10 focus:border-[#030213] uppercase placeholder:normal-case placeholder:font-sans placeholder:font-normal placeholder:text-[#9CA3AF] transition-all"
               />
             </div>
 
-            {/* Batch Selector (Sticky) */}
+            {/* Preserved Batch Segmented Selector */}
             <div className="md:col-span-3">
-              <label className="block text-xs font-bold text-slate-700 uppercase tracking-wider mb-1">
+              <label className="block text-xs font-semibold text-[#4B5563] uppercase tracking-wider mb-1.5">
                 Batch <span className="text-red-500">*</span>
               </label>
-              <div className="grid grid-cols-2 gap-1.5 p-1 bg-slate-100 rounded-lg border border-slate-200">
+              <div className="grid grid-cols-2 gap-1 p-1 bg-[#F4F2F0] rounded-xl border border-[#E5E7EB]">
                 <button
                   type="button"
                   onClick={() => setBatch('O23')}
-                  className={`py-2 text-xs font-bold rounded transition-all ${
+                  className={`btn-interaction py-2 text-xs font-semibold rounded-lg transition-all cursor-pointer ${
                     batch === 'O23'
-                      ? 'bg-blue-900 text-white shadow-2xs'
-                      : 'text-slate-600 hover:text-slate-900 hover:bg-slate-200'
+                      ? 'bg-[#030213] text-white shadow-2xs'
+                      : 'text-[#6B7280] hover:text-[#1A1A1A]'
                   }`}
                 >
                   O23
@@ -314,10 +346,10 @@ export default function RapidCollectionForm({
                 <button
                   type="button"
                   onClick={() => setBatch('O21')}
-                  className={`py-2 text-xs font-bold rounded transition-all ${
+                  className={`btn-interaction py-2 text-xs font-semibold rounded-lg transition-all cursor-pointer ${
                     batch === 'O21'
-                      ? 'bg-blue-900 text-white shadow-2xs'
-                      : 'text-slate-600 hover:text-slate-900 hover:bg-slate-200'
+                      ? 'bg-[#030213] text-white shadow-2xs'
+                      : 'text-[#6B7280] hover:text-[#1A1A1A]'
                   }`}
                 >
                   O21
@@ -327,86 +359,94 @@ export default function RapidCollectionForm({
 
             {/* Student Name (Optional) */}
             <div className="md:col-span-4">
-              <label htmlFor="studentNameInput" className="block text-xs font-medium text-slate-600 mb-1">
-                Student Name <span className="text-slate-400 text-[10px]">(Optional)</span>
+              <label
+                htmlFor="studentName"
+                className="block text-xs font-semibold text-[#4B5563] uppercase tracking-wider mb-1.5"
+              >
+                Student Name <span className="text-[#9CA3AF] font-normal text-[10px] lowercase">(optional)</span>
               </label>
               <input
-                id="studentNameInput"
+                id="studentName"
                 type="text"
                 value={studentName}
                 onChange={(e) => setStudentName(e.target.value)}
-                placeholder="Name from ID card (optional)"
-                className="w-full text-sm px-3 py-2.5 rounded-lg border border-slate-300 focus:border-blue-600 focus:ring-1 focus:ring-blue-100"
+                placeholder="Name from ID card"
+                className="w-full text-xs px-3.5 py-3 rounded-xl border border-[#E5E7EB] bg-[#F9FAFB] focus:bg-white focus:ring-2 focus:ring-[#030213]/10 focus:border-[#030213] transition-all"
               />
             </div>
           </div>
 
-          {/* Submitter & Exception Row */}
-          <div className="bg-slate-50 p-3 rounded-lg border border-slate-200 flex flex-wrap items-center justify-between gap-3 text-xs">
+          {/* Submitter Verification Row */}
+          <div className="bg-[#F9FAFB] p-3 rounded-xl border border-[#E5E7EB] flex flex-wrap items-center justify-between gap-3 text-xs">
             <div className="flex items-center gap-3">
-              <span className="font-semibold text-slate-700">Physical Submitter:</span>
-              <button
-                type="button"
-                onClick={() => setIsSubmitterPresent(true)}
-                className={`flex items-center gap-1 px-2.5 py-1.5 rounded font-medium transition-colors ${
-                  isSubmitterPresent
-                    ? 'bg-emerald-600 text-white shadow-2xs'
-                    : 'bg-white text-slate-600 border border-slate-300 hover:bg-slate-100'
-                }`}
-              >
-                <UserCheck className="w-3.5 h-3.5" />
-                <span>Registered Student Self</span>
-              </button>
+              <span className="font-semibold text-[#4B5563]">Physical Submitter:</span>
+              <div className="inline-flex rounded-lg border border-[#E5E7EB] bg-white p-0.5">
+                <button
+                  type="button"
+                  onClick={() => setIsSubmitterPresent(true)}
+                  className={`btn-interaction flex items-center gap-1.5 px-3 py-1 rounded-md text-xs font-medium cursor-pointer ${
+                    isSubmitterPresent
+                      ? 'bg-[#030213] text-white shadow-2xs'
+                      : 'text-[#6B7280] hover:text-[#1A1A1A]'
+                  }`}
+                >
+                  <UserCheck className="w-3.5 h-3.5" />
+                  <span>Student Present</span>
+                </button>
 
-              <button
-                type="button"
-                onClick={() => setIsSubmitterPresent(false)}
-                className={`flex items-center gap-1 px-2.5 py-1.5 rounded font-medium transition-colors ${
-                  !isSubmitterPresent
-                    ? 'bg-amber-600 text-white shadow-2xs'
-                    : 'bg-white text-slate-600 border border-slate-300 hover:bg-slate-100'
-                }`}
-              >
-                <UserX className="w-3.5 h-3.5" />
-                <span>Friend / Proxy Submitter</span>
-              </button>
+                <button
+                  type="button"
+                  onClick={() => setIsSubmitterPresent(false)}
+                  className={`btn-interaction flex items-center gap-1.5 px-3 py-1 rounded-md text-xs font-medium cursor-pointer ${
+                    !isSubmitterPresent
+                      ? 'bg-[#B45309] text-white shadow-2xs'
+                      : 'text-[#6B7280] hover:text-[#1A1A1A]'
+                  }`}
+                >
+                  <UserX className="w-3.5 h-3.5" />
+                  <span>Friend / Proxy</span>
+                </button>
+              </div>
             </div>
 
             {!isSubmitterPresent && (
               <div className="flex items-center gap-2 w-full sm:w-auto animate-in fade-in">
-                <span className="text-slate-600 whitespace-nowrap font-medium">Submitter ID:</span>
+                <span className="text-[#B45309] font-semibold whitespace-nowrap">Submitter ID:</span>
                 <input
                   type="text"
                   required
                   value={submitterStudentId}
                   onChange={(e) => setSubmitterStudentId(e.target.value.toUpperCase())}
                   placeholder="e.g. O230112"
-                  className="font-mono text-xs uppercase px-2.5 py-1.5 bg-white border border-amber-400 rounded focus:outline-hidden focus:ring-1 focus:ring-amber-500"
+                  className="font-mono text-xs uppercase px-2.5 py-1 bg-white border border-[#FDE68A] rounded-lg focus:outline-hidden focus:ring-2 focus:ring-[#D97706]/20"
                 />
               </div>
             )}
           </div>
 
-          {/* Submit Button */}
+          {/* Action Submit Button */}
           <button
             type="submit"
             disabled={isSubmitting || (!activeRoomName && !isPrimaryBlockFull)}
-            className="w-full py-3.5 bg-blue-900 hover:bg-blue-800 text-white font-bold rounded-lg shadow-sm transition-all flex items-center justify-center gap-2 text-sm sm:text-base disabled:opacity-50 disabled:cursor-not-allowed cursor-pointer"
+            className="btn-interaction w-full py-3 bg-[#030213] hover:bg-[#030213]/90 text-white font-semibold rounded-xl shadow-sm flex items-center justify-center gap-2 text-sm sm:text-base cursor-pointer disabled:opacity-50 disabled:cursor-not-allowed"
           >
             {isSubmitting ? (
               <>
-                <RefreshCw className="w-4 h-4 animate-spin" />
-                <span>Validating & Allocating Seat...</span>
+                <RefreshCw className="w-4 h-4 animate-spin text-white" />
+                <span>Recording in Database...</span>
               </>
             ) : (
               <>
                 <Send className="w-4 h-4" />
                 <span>Record Laptop & Assign Seat</span>
+                <kbd className="hidden sm:inline-block text-[11px] font-mono font-medium bg-white/20 text-white px-2 py-0.5 rounded ml-2">
+                  ↵ Enter
+                </kbd>
               </>
             )}
           </button>
         </form>
       </div>
-    </div>
+    </StandardCard>
   );
 }
