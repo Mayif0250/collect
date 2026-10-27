@@ -16,7 +16,7 @@ import { StandardCard } from '@/components/ui/StandardCard';
 
 export interface RoomData {
   id: string;
-  block: 'E' | 'F';
+  block: 'E' | 'F' | 'BACKUP';
   name: string;
   roomOrder: number;
   capacity: number;
@@ -41,7 +41,7 @@ interface RoomAllocationBoardProps {
 }
 
 export default function RoomAllocationBoard({ rooms, onSelectRoom, isAdmin = false }: RoomAllocationBoardProps) {
-  const [selectedBlock, setSelectedBlock] = useState<'ALL' | 'E' | 'F'>('ALL');
+  const [selectedBlock, setSelectedBlock] = useState<'ALL' | 'E' | 'F' | 'BACKUP'>('ALL');
   const [inspectorRoom, setInspectorRoom] = useState<RoomData | null>(null);
   const [roomDetails, setRoomDetails] = useState<any[] | null>(null);
   const [isLoadingDetails, setIsLoadingDetails] = useState(false);
@@ -49,17 +49,22 @@ export default function RoomAllocationBoard({ rooms, onSelectRoom, isAdmin = fal
 
   const filteredRooms = rooms.filter((r) => {
     if (selectedBlock === 'ALL') return true;
+    if (selectedBlock === 'BACKUP') return r.block === 'BACKUP' || r.name === 'Backup' || r.name === 'Backup Laptops';
     return r.block === selectedBlock;
   });
 
-  const eRooms = rooms.filter((r) => r.block === 'E');
+  const eRooms = rooms.filter((r) => r.block === 'E' && r.name !== 'Backup');
   const fRooms = rooms.filter((r) => r.block === 'F');
+  const backupRooms = rooms.filter((r) => r.block === 'BACKUP' || r.name === 'Backup' || r.name === 'Backup Laptops');
 
   const eTotalCapacity = eRooms.reduce((sum, r) => sum + r.capacity, 0);
   const eTotalOccupied = eRooms.reduce((sum, r) => sum + r.occupiedSeats, 0);
 
   const fTotalCapacity = fRooms.reduce((sum, r) => sum + r.capacity, 0);
   const fTotalOccupied = fRooms.reduce((sum, r) => sum + r.occupiedSeats, 0);
+
+  const backupTotalOccupied = backupRooms.reduce((sum, r) => sum + r.occupiedSeats, 0);
+  const backupTotalCapacity = backupRooms.reduce((sum, r) => sum + r.capacity, 0);
 
   const handleInspectRoom = async (room: RoomData) => {
     setInspectorRoom(room);
@@ -101,16 +106,16 @@ export default function RoomAllocationBoard({ rooms, onSelectRoom, isAdmin = fal
                 Authoritative Room Allocation Board
               </h3>
               <span className="text-xs bg-[#F4F2F0] text-[#4B5563] font-bold px-2.5 py-0.5 rounded-md border border-[#E5E7EB]">
-                18 Rooms
+                {rooms.length} Rooms
               </span>
             </div>
             <p className="text-xs text-[#6B7280] mt-0.5">
-              E Block: CSE Primary Queue (420 Seats) • F Block: ECE Primary Queue (141 Seats)
+              E Block (420 Seats) • F Block (141 Seats) • Backup Room ({backupTotalOccupied} Recorded)
             </p>
           </div>
 
           {/* Tab Filter Pills */}
-          <div className="inline-flex rounded-xl border border-[#E5E7EB] p-1 bg-[#F4F2F0] text-xs font-semibold">
+          <div className="inline-flex rounded-xl border border-[#E5E7EB] p-1 bg-[#F4F2F0] text-xs font-semibold flex-wrap gap-1">
             <button
               onClick={() => setSelectedBlock('ALL')}
               className={`btn-interaction px-3.5 py-1.5 rounded-lg transition-all cursor-pointer ${
@@ -119,7 +124,7 @@ export default function RoomAllocationBoard({ rooms, onSelectRoom, isAdmin = fal
                   : 'text-[#6B7280] hover:text-[#1A1A1A]'
               }`}
             >
-              All 18 Rooms
+              All Rooms ({rooms.length})
             </button>
             <button
               onClick={() => setSelectedBlock('E')}
@@ -141,6 +146,16 @@ export default function RoomAllocationBoard({ rooms, onSelectRoom, isAdmin = fal
             >
               F Block (ECE • {fTotalOccupied}/{fTotalCapacity})
             </button>
+            <button
+              onClick={() => setSelectedBlock('BACKUP')}
+              className={`btn-interaction px-3.5 py-1.5 rounded-lg transition-all cursor-pointer ${
+                selectedBlock === 'BACKUP'
+                  ? 'bg-amber-700 text-white shadow-xs'
+                  : 'text-[#6B7280] hover:text-amber-800'
+              }`}
+            >
+              Backup Room ({backupTotalOccupied} Laptops)
+            </button>
           </div>
         </div>
       </StandardCard>
@@ -149,11 +164,16 @@ export default function RoomAllocationBoard({ rooms, onSelectRoom, isAdmin = fal
       <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-4">
         {filteredRooms.map((room) => {
           const isEBlock = room.block === 'E';
+          const isBackup = room.block === 'BACKUP' || room.name === 'Backup' || room.name === 'Backup Laptops';
           return (
             <div
               key={room.id}
               className={`bg-[#F4F2F0] rounded-[22px] p-[8px] pb-[14px] flex flex-col justify-between hover-card-effect animate-card-entrance ${
-                room.activeClaim ? 'ring-2 ring-blue-500/40' : ''
+                isBackup
+                  ? 'ring-2 ring-amber-400/60 shadow-xs'
+                  : room.activeClaim
+                  ? 'ring-2 ring-blue-500/40'
+                  : ''
               }`}
             >
               <div className="bg-white border border-[#E5E7EB] rounded-[16px] p-4 sm:p-5 space-y-3.5 shadow-2xs flex-1 flex flex-col justify-between">
@@ -161,22 +181,29 @@ export default function RoomAllocationBoard({ rooms, onSelectRoom, isAdmin = fal
                   {/* Header: Order & Name */}
                   <div className="flex items-start justify-between">
                     <div>
-                      <div className="flex items-center gap-1.5">
+                      <div className="flex items-center gap-1.5 flex-wrap">
                         <span className="text-[10px] font-mono font-bold px-1.5 py-0.5 rounded-md bg-[#F3F4F6] text-[#4B5563] border border-[#E5E7EB]">
-                          Order #{room.roomOrder}
+                          {isBackup ? 'Backup Queue' : `Order #${room.roomOrder}`}
                         </span>
                         <span
                           className={`text-[9px] font-bold uppercase tracking-wider px-1.5 py-0.5 rounded-md border ${
-                            isEBlock
+                            isBackup
+                              ? 'bg-amber-100 text-amber-900 border-amber-300'
+                              : isEBlock
                               ? 'bg-[#DBEAFE] text-[#1E40AF] border-[#BFDBFE]'
                               : 'bg-[#EDE9FE] text-[#5B21B6] border-[#DDD6FE]'
                           }`}
                         >
-                          {room.block} Block ({isEBlock ? 'CSE' : 'ECE'})
+                          {isBackup ? 'Universal Backup' : `${room.block} Block (${isEBlock ? 'CSE' : 'ECE'})`}
                         </span>
                       </div>
-                      <h4 className="font-bold text-[#1A1A1A] text-lg sm:text-xl tracking-tight mt-1.5">
+                      <h4 className="font-bold text-[#1A1A1A] text-lg sm:text-xl tracking-tight mt-1.5 flex items-center gap-1.5">
                         {room.name}
+                        {isBackup && (
+                          <span className="text-[10px] font-bold text-amber-700 bg-amber-50 px-1.5 py-0.5 rounded border border-amber-200">
+                            Reserve
+                          </span>
+                        )}
                       </h4>
                     </div>
 

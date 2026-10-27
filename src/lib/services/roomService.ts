@@ -35,7 +35,7 @@ export async function getAllRoomsOccupancy(): Promise<RoomOccupancyInfo[]> {
       laptops: {
         where: {
           allocationStatus: {
-            in: ['PRIMARY', 'CROSS_BLOCK'],
+            in: ['PRIMARY', 'CROSS_BLOCK', 'BACKUP'],
           },
         },
         select: { seatNumber: true },
@@ -158,10 +158,13 @@ export async function claimRoom(collectorId: string, roomId: string) {
       throw new Error('ROOM_NOT_FOUND: Room does not exist or is inactive.');
     }
 
-    // 5. Verify department match
-    const expectedBlock = collector.permittedDepartment === Department.CSE ? Block.E : Block.F;
-    if (targetRoom.block !== expectedBlock) {
-      throw new Error(`DEPARTMENT_MISMATCH: ${collector.permittedDepartment} collectors can only claim ${expectedBlock} Block rooms.`);
+    // 5. Verify department match (Backup room is universal for all departments)
+    const isBackupRoom = targetRoom.name === 'Backup' || targetRoom.name === 'Backup Laptops';
+    if (!isBackupRoom) {
+      const expectedBlock = collector.permittedDepartment === Department.CSE ? Block.E : Block.F;
+      if (targetRoom.block !== expectedBlock) {
+        throw new Error(`DEPARTMENT_MISMATCH: ${collector.permittedDepartment} collectors can only claim ${expectedBlock} Block rooms.`);
+      }
     }
 
     // 6. Check if room already has an active claim
@@ -179,7 +182,7 @@ export async function claimRoom(collectorId: string, roomId: string) {
     const currentAllocations = await tx.laptopRecord.count({
       where: {
         roomId: targetRoom.id,
-        allocationStatus: { in: ['PRIMARY', 'CROSS_BLOCK'] },
+        allocationStatus: { in: ['PRIMARY', 'CROSS_BLOCK', 'BACKUP'] },
       },
     });
     if (currentAllocations >= targetRoom.capacity) {
@@ -188,26 +191,28 @@ export async function claimRoom(collectorId: string, roomId: string) {
 
     // 8. Verify room order constraint:
     // Any room before targetRoom in the same block MUST either be full or currently claimed by an active collector.
-    const precedingRooms = await tx.room.findMany({
-      where: {
-        block: targetRoom.block,
-        roomOrder: { lt: targetRoom.roomOrder },
-        isActive: true,
-      },
-      orderBy: { roomOrder: 'asc' },
-      include: {
-        claims: { where: { status: ClaimStatus.ACTIVE } },
-        laptops: { where: { allocationStatus: { in: ['PRIMARY', 'CROSS_BLOCK'] } } },
-      },
-    });
+    if (!isBackupRoom) {
+      const precedingRooms = await tx.room.findMany({
+        where: {
+          block: targetRoom.block,
+          roomOrder: { lt: targetRoom.roomOrder },
+          isActive: true,
+        },
+        orderBy: { roomOrder: 'asc' },
+        include: {
+          claims: { where: { status: ClaimStatus.ACTIVE } },
+          laptops: { where: { allocationStatus: { in: ['PRIMARY', 'CROSS_BLOCK', 'BACKUP'] } } },
+        },
+      });
 
-    for (const prec of precedingRooms) {
-      const isPrecFull = prec.laptops.length >= prec.capacity;
-      const hasActiveClaim = prec.claims.length > 0;
-      if (!isPrecFull && !hasActiveClaim) {
-        throw new Error(
-          `ORDER_VIOLATION: Room ${prec.name} (Order ${prec.roomOrder}) is vacant and unclaimed. You must claim rooms in configured sequence.`
-        );
+      for (const prec of precedingRooms) {
+        const isPrecFull = prec.laptops.length >= prec.capacity;
+        const hasActiveClaim = prec.claims.length > 0;
+        if (!isPrecFull && !hasActiveClaim) {
+          throw new Error(
+            `ORDER_VIOLATION: Room ${prec.name} (Order ${prec.roomOrder}) is vacant and unclaimed. You must claim rooms in configured sequence.`
+          );
+        }
       }
     }
 

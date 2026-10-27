@@ -97,7 +97,7 @@ export async function generateExcelWorkbook(): Promise<Buffer> {
       batch: r.batch,
       status: r.allocationStatus,
       block: r.room?.block || (r.allocationStatus === AllocationStatus.BACKUP ? 'BACKUP' : r.primaryBlock),
-      room: r.room?.name || '—',
+      room: r.room?.name || (r.allocationStatus === AllocationStatus.BACKUP ? 'Backup' : '—'),
       seat: r.seatNumber ?? '—',
       submitterId: r.submitterStudentId || (r.isSubmitterPresent ? 'Self' : '—'),
       present: r.isSubmitterPresent ? 'Yes' : 'No',

@@ -12,6 +12,9 @@ export interface RegisterLaptopInput {
   idempotencyKey?: string;
   allowDuplicateOverride?: boolean;
   duplicateReason?: string;
+  directToBackup?: boolean;
+  backupReason?: string;
+  branch?: Department;
 }
 
 export interface RegisterLaptopResult {
@@ -129,8 +132,10 @@ export async function registerLaptop(input: RegisterLaptopInput): Promise<Regist
       throw new Error('COLLECTOR_INACTIVE: Collector account is deactivated or not found.');
     }
 
-    const branch = collector.permittedDepartment;
-    if (branch !== Department.CSE && branch !== Department.ECE) {
+    let branch = collector.permittedDepartment;
+    if (branch === Department.ALL) {
+      branch = input.branch || Department.CSE;
+    } else if (branch !== Department.CSE && branch !== Department.ECE) {
       throw new Error('INVALID_DEPARTMENT: Collector must have CSE or ECE permitted department to collect laptops.');
     }
     const primaryBlock = branch === Department.CSE ? Block.E : Block.F;
@@ -166,10 +171,45 @@ export async function registerLaptop(input: RegisterLaptopInput): Promise<Regist
     let assignedSeat: number | null = null;
     let collectionId = '';
 
-    if (isPrimaryBlockEntirelyFull) {
-      // Primary block is completely full -> record in backup inventory
+    const isDirectToBackupRequested = !!input.directToBackup;
+    const isClaimedBackupRoom = activeClaim && activeClaim.room.name === 'Backup';
+
+    if (isDirectToBackupRequested || isPrimaryBlockEntirelyFull || isClaimedBackupRoom) {
+      // Find or upsert the authoritative Backup room
+      let backupRoom = await tx.room.findFirst({
+        where: { name: 'Backup', isActive: true },
+      });
+
+      if (!backupRoom) {
+        backupRoom = await tx.room.upsert({
+          where: { name: 'Backup' },
+          update: { isActive: true },
+          create: {
+            name: 'Backup',
+            block: Block.E,
+            capacity: 500,
+            roomOrder: 99,
+            isActive: true,
+          },
+        });
+      }
+
+      // Determine next available sequential seat in Backup room
+      const existingBackupSeats = await tx.laptopRecord.findMany({
+        where: { roomId: backupRoom.id },
+        select: { seatNumber: true },
+      });
+      const occupiedSeatSet = new Set(existingBackupSeats.map((s) => s.seatNumber));
+      let nextSeat = 1;
+      while (occupiedSeatSet.has(nextSeat)) {
+        nextSeat++;
+      }
+
       allocationStatus = AllocationStatus.BACKUP;
-      collectionId = `COL-${branch}-BACKUP-${Date.now().toString(36).toUpperCase()}-${generateRandomSuffix(3)}`;
+      targetRoomId = backupRoom.id;
+      targetRoomName = backupRoom.name;
+      assignedSeat = nextSeat;
+      collectionId = `COL-${branch}-BACKUP-${String(assignedSeat).padStart(3, '0')}-${generateRandomSuffix(3)}`;
     } else {
       // Primary block has space. Collector MUST have an active room claimed
       if (!activeClaim) {
@@ -180,7 +220,7 @@ export async function registerLaptop(input: RegisterLaptopInput): Promise<Regist
       const roomAllocations = await tx.laptopRecord.count({
         where: {
           roomId: activeClaim.roomId,
-          allocationStatus: { in: ['PRIMARY', 'CROSS_BLOCK'] },
+          allocationStatus: { in: ['PRIMARY', 'CROSS_BLOCK', 'BACKUP'] },
         },
       });
 
@@ -220,6 +260,14 @@ export async function registerLaptop(input: RegisterLaptopInput): Promise<Regist
     });
 
     // F. Audit log
+    const auditReason = isDirectToBackupRequested
+      ? `Manual addition to Backup room: ${input.backupReason || 'Direct collector manual entry'}`
+      : isPrimaryBlockEntirelyFull
+      ? 'Automatic allocation to Backup room (All primary block rooms full)'
+      : input.allowDuplicateOverride
+      ? `Duplicate override: ${input.duplicateReason}`
+      : 'Standard laptop collection registration';
+
     await tx.auditLog.create({
       data: {
         userId: collector.id,
@@ -235,8 +283,9 @@ export async function registerLaptop(input: RegisterLaptopInput): Promise<Regist
           roomName: targetRoomName,
           seatNumber: assignedSeat,
           isDuplicateOverride: !!input.allowDuplicateOverride,
+          isManualBackup: isDirectToBackupRequested,
         },
-        reason: input.allowDuplicateOverride ? `Duplicate override: ${input.duplicateReason}` : 'Standard laptop collection registration',
+        reason: auditReason,
       },
     });
 

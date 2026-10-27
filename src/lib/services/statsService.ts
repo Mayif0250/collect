@@ -111,7 +111,7 @@ export async function getDashboardMetrics(): Promise<DashboardMetrics> {
     if (r.block === Block.E) {
       eBlockCapacity += r.capacity;
       eBlockAllocated += r.laptops.length;
-    } else {
+    } else if (r.block === Block.F) {
       fBlockCapacity += r.capacity;
       fBlockAllocated += r.laptops.length;
     }

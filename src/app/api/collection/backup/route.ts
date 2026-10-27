@@ -33,6 +33,7 @@ export async function GET(req: NextRequest) {
       where,
       include: {
         collector: { select: { id: true, name: true, username: true } },
+        room: { select: { id: true, name: true, block: true } },
       },
       orderBy: { createdAt: 'asc' },
     });

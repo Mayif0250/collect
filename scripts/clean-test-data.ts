@@ -83,6 +83,9 @@ export async function cleanTestData() {
   console.log(`Deleted ${deletedSessions.count} test collection session(s).`);
 
   // 7. Delete test rooms (any starting with TEST_)
+  await prisma.laptopRecord.deleteMany();
+  await prisma.roomClaim.deleteMany();
+  await prisma.crossBlockTransfer.deleteMany();
   const deletedTestRooms = await prisma.room.deleteMany({
     where: { name: { startsWith: 'TEST' } },
   });
@@ -115,6 +118,13 @@ export async function cleanTestData() {
       create: { block: Block.F, name: r.name, roomOrder: r.order, capacity: r.capacity, isActive: true },
     });
   }
+
+  // Ensure Backup room is configured
+  await prisma.room.upsert({
+    where: { name: 'Backup' },
+    update: { block: Block.E, roomOrder: 99, capacity: 500, isActive: true },
+    create: { name: 'Backup', block: Block.E, roomOrder: 99, capacity: 500, isActive: true },
+  });
 
   // 10. Ensure production admin user exists
   const adminUsername = process.env.ADMIN_USERNAME || 'admin';

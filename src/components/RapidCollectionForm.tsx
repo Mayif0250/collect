@@ -39,6 +39,8 @@ export default function RapidCollectionForm({
   const [batch, setBatch] = useState<'O23' | 'O21'>('O23'); // Persisted across entries
   const [isSubmitterPresent, setIsSubmitterPresent] = useState(true);
   const [submitterStudentId, setSubmitterStudentId] = useState('');
+  const [directToBackup, setDirectToBackup] = useState(false);
+  const [backupReason, setBackupReason] = useState('');
 
   // Execution states
   const [isSubmitting, setIsSubmitting] = useState(false);
@@ -112,6 +114,8 @@ export default function RapidCollectionForm({
         isSubmitterPresent,
         submitterStudentId: isSubmitterPresent ? undefined : submitterStudentId.trim().toUpperCase(),
         idempotencyKey,
+        directToBackup: directToBackup || isPrimaryBlockFull,
+        backupReason: backupReason.trim() || undefined,
       };
 
       if (isOverride && duplicateWarning) {
@@ -192,12 +196,17 @@ export default function RapidCollectionForm({
             </span>
           </div>
 
-          {activeRoomName && nextSeatNumber && (
+          {directToBackup || isPrimaryBlockFull ? (
+            <div className="inline-flex items-center gap-1.5 px-2.5 py-0.5 rounded-full bg-amber-100 text-amber-900 border border-amber-300 text-xs font-semibold font-mono">
+              <span className="w-1.5 h-1.5 rounded-full bg-amber-600 animate-pulse" />
+              <span>Target: Backup Room</span>
+            </div>
+          ) : activeRoomName && nextSeatNumber ? (
             <div className="inline-flex items-center gap-1.5 px-2.5 py-0.5 rounded-full bg-[#DCFCE7] text-[#15803D] border border-[#BBF7D0] text-xs font-semibold font-mono">
               <span className="w-1.5 h-1.5 rounded-full bg-[#16A34A] animate-pulse" />
               <span>Target: Room {activeRoomName} • Seat #{nextSeatNumber}</span>
             </div>
-          )}
+          ) : null}
         </div>
       }
     >
@@ -205,7 +214,15 @@ export default function RapidCollectionForm({
         {/* Status text */}
         <p className="text-xs text-[#6B7280]">
           {isPrimaryBlockFull ? (
-            <span className="text-[#B45309] font-medium">Primary Block at 100% Capacity → Saving to Backup Inventory</span>
+            <span className="text-amber-800 font-medium flex items-center gap-1.5">
+              <span className="inline-block w-2 h-2 rounded-full bg-amber-500 animate-pulse"></span>
+              All rooms in primary queue are full → Automatically allocating into <strong>Backup Room</strong>
+            </span>
+          ) : directToBackup ? (
+            <span className="text-amber-800 font-semibold flex items-center gap-1.5">
+              <span className="inline-block w-2 h-2 rounded-full bg-amber-600"></span>
+              Manual Backup Mode Enabled → Allocating directly into <strong>Backup Room</strong>
+            </span>
           ) : activeRoomName ? (
             <span>
               Laptops are sequentially allocated in room{' '}
@@ -214,7 +231,7 @@ export default function RapidCollectionForm({
             </span>
           ) : (
             <span className="text-[#9CA3AF]">
-              Claim a room from the queue above to activate sequential seat allocation.
+              Claim a room from the queue above to activate sequential seat allocation, or select &ldquo;Manual Add to Backup Room&rdquo; below.
             </span>
           )}
         </p>
@@ -239,7 +256,7 @@ export default function RapidCollectionForm({
                   <strong>{lastSaved.studentName}</strong> (<span className="font-mono">{lastSaved.studentId}</span> • Ph: {lastSaved.phoneNumber}) →{' '}
                   <strong className="text-[#14532D]">
                     {lastSaved.allocationStatus === 'BACKUP'
-                      ? 'Backup Storage'
+                      ? `Backup Room (Seat #${lastSaved.seatNumber || '—'})`
                       : `${lastSaved.roomName} (Seat #${lastSaved.seatNumber})`}
                   </strong>
                 </div>
@@ -476,10 +493,63 @@ export default function RapidCollectionForm({
             )}
           </div>
 
+          {/* Manual Backup Room Option */}
+          <div
+            className={`p-3.5 rounded-xl border transition-all ${
+              directToBackup || isPrimaryBlockFull
+                ? 'bg-amber-50/90 border-amber-300 text-amber-950 shadow-2xs'
+                : 'bg-[#F9FAFB] border-[#E5E7EB] text-[#4B5563]'
+            }`}
+          >
+            <div className="flex items-center justify-between gap-3">
+              <label className="flex items-center gap-2.5 cursor-pointer select-none flex-1">
+                <input
+                  type="checkbox"
+                  checked={directToBackup || isPrimaryBlockFull}
+                  disabled={isPrimaryBlockFull}
+                  onChange={(e) => setDirectToBackup(e.target.checked)}
+                  className="w-4 h-4 rounded text-amber-600 focus:ring-amber-500 border-gray-300 cursor-pointer disabled:cursor-not-allowed"
+                />
+                <div>
+                  <div className="flex items-center gap-2">
+                    <span className="font-bold text-xs text-[#1A1A1A]">
+                      {isPrimaryBlockFull ? 'Automatic Backup Mode Active' : 'Manually Add to Backup Room'}
+                    </span>
+                    {(directToBackup || isPrimaryBlockFull) && (
+                      <span className="text-[10px] font-bold uppercase tracking-wider px-2 py-0.5 rounded-md bg-amber-200 text-amber-900 border border-amber-300 font-mono">
+                        Backup Room
+                      </span>
+                    )}
+                  </div>
+                  <p className="text-[11px] text-[#6B7280] mt-0.5">
+                    {isPrimaryBlockFull
+                      ? 'All rooms in primary queue are full. Submissions automatically allocate sequential seats in Backup room.'
+                      : 'Route this laptop directly to Backup room instead of active sequential room.'}
+                  </p>
+                </div>
+              </label>
+            </div>
+
+            {directToBackup && !isPrimaryBlockFull && (
+              <div className="mt-2.5 pt-2.5 border-t border-amber-200 animate-in fade-in">
+                <label className="block text-[11px] font-semibold text-amber-900 mb-1">
+                  Reason for routing to Backup Room (Optional):
+                </label>
+                <input
+                  type="text"
+                  value={backupReason}
+                  onChange={(e) => setBackupReason(e.target.value)}
+                  placeholder="e.g. Special holding, pending verification, overflow reserve"
+                  className="w-full text-xs p-2.5 bg-white border border-amber-300 rounded-lg focus:outline-hidden focus:ring-2 focus:ring-amber-500/20 text-[#1A1A1A]"
+                />
+              </div>
+            )}
+          </div>
+
           {/* Action Submit Button */}
           <button
             type="submit"
-            disabled={isSubmitting || (!activeRoomName && !isPrimaryBlockFull)}
+            disabled={isSubmitting || (!activeRoomName && !isPrimaryBlockFull && !directToBackup)}
             className="btn-interaction w-full py-3 bg-[#030213] hover:bg-[#030213]/90 text-white font-semibold rounded-xl shadow-sm flex items-center justify-center gap-2 text-sm sm:text-base cursor-pointer disabled:opacity-50 disabled:cursor-not-allowed"
           >
             {isSubmitting ? (
@@ -490,7 +560,11 @@ export default function RapidCollectionForm({
             ) : (
               <>
                 <Send className="w-4 h-4" />
-                <span>Record Laptop & Assign Seat</span>
+                <span>
+                  {directToBackup || isPrimaryBlockFull
+                    ? 'Record in Backup Room'
+                    : 'Record Laptop & Assign Seat'}
+                </span>
                 <kbd className="hidden sm:inline-block text-[11px] font-mono font-medium bg-white/20 text-white px-2 py-0.5 rounded ml-2">
                   ↵ Enter
                 </kbd>

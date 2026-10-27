@@ -85,6 +85,24 @@ export async function seedDatabase() {
     });
   }
 
+  console.log('Seeding Backup room...');
+  await prisma.room.upsert({
+    where: { name: 'Backup' },
+    update: {
+      block: Block.E,
+      roomOrder: 99,
+      capacity: 500,
+      isActive: true,
+    },
+    create: {
+      name: 'Backup',
+      block: Block.E,
+      roomOrder: 99,
+      capacity: 500,
+      isActive: true,
+    },
+  });
+
   // Verify counts
   const eRooms = await prisma.room.findMany({ where: { block: Block.E }, orderBy: { roomOrder: 'asc' } });
   const fRooms = await prisma.room.findMany({ where: { block: Block.F }, orderBy: { roomOrder: 'asc' } });

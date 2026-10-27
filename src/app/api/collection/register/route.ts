@@ -2,18 +2,21 @@ import { NextRequest, NextResponse } from 'next/server';
 import { requireAuth } from '@/lib/auth';
 import { registerLaptop } from '@/lib/services/collectionService';
 import { z } from 'zod';
-import { Batch } from '@prisma/client';
+import { Batch, Department } from '@prisma/client';
 
 const registerSchema = z.object({
   studentId: z.string().trim().min(1, 'Student ID is required'),
   studentName: z.string().trim().min(1, 'Student Name is required'),
   phoneNumber: z.string().trim().min(10, 'Valid Phone Number is required (at least 10 digits)'),
   batch: z.enum([Batch.O23, Batch.O21], { message: 'Batch must be O23 or O21' }),
+  branch: z.enum([Department.CSE, Department.ECE]).optional(),
   isSubmitterPresent: z.boolean().default(true),
   submitterStudentId: z.string().trim().optional(),
   idempotencyKey: z.string().trim().optional(),
   allowDuplicateOverride: z.boolean().optional().default(false),
   duplicateReason: z.string().trim().optional(),
+  directToBackup: z.boolean().optional().default(false),
+  backupReason: z.string().trim().optional(),
 });
 
 export async function POST(req: NextRequest) {
@@ -54,6 +57,9 @@ export async function POST(req: NextRequest) {
       idempotencyKey: data.idempotencyKey,
       allowDuplicateOverride: data.allowDuplicateOverride,
       duplicateReason: data.duplicateReason,
+      directToBackup: data.directToBackup,
+      backupReason: data.backupReason,
+      branch: data.branch,
     });
 
     if (!result.success && result.duplicateWarning) {
